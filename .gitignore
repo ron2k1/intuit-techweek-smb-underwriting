@@ -24,3 +24,6 @@ reports/figures/
 .idea/
 .DS_Store
 Thumbs.db
+
+# zip extraction junk
+__MACOSX/
