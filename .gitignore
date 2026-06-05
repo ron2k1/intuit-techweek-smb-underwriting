@@ -1,0 +1,26 @@
+# --- Data (NOT committed; each member fetches it locally; see README) ---
+/dataset/train.csv
+/dataset/validation.csv
+/dataset/test.csv
+/dataset/dataset-compressed.zip
+/data/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+*.egg-info/
+
+# --- Scratch / outputs ---
+*.log
+scratch/
+reports/figures/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

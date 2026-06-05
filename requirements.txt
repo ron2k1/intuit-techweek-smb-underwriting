@@ -1,0 +1,7 @@
+# Core data + modeling stack for the SMB Underwriting Challenge.
+# Pinned to floors that match a recent scikit-learn (HistGradientBoosting w/ native NaN support).
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+scipy>=1.11
+statsmodels>=0.14
