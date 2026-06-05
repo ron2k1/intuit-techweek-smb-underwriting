@@ -3,7 +3,7 @@
 /dataset/validation.csv
 /dataset/test.csv
 /dataset/dataset-compressed.zip
-/data/*
+/dataset/*
 
 # --- Python ---
 __pycache__/
