@@ -24,4 +24,5 @@ reports/figures/
 .idea/
 .DS_Store
 Thumbs.db
+catboost_info/
 
