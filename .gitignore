@@ -3,6 +3,7 @@
 /dataset/validation.csv
 /dataset/test.csv
 /dataset/dataset-compressed.zip
+/dataset/__MACOSX/
 /data/
 
 # --- Python ---
