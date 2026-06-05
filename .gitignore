@@ -3,7 +3,7 @@
 /dataset/validation.csv
 /dataset/test.csv
 /dataset/dataset-compressed.zip
-/data/
+/data/*
 
 # --- Python ---
 __pycache__/
@@ -24,3 +24,4 @@ reports/figures/
 .idea/
 .DS_Store
 Thumbs.db
+
