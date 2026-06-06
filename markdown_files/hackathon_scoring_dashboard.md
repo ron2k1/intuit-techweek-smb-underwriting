@@ -14,22 +14,22 @@ The practical implication is that a high-AUROC or high-headline-NPV model can st
 
 | Score component | Weight | What judges care about | Current proxy metric | Current status | Biggest risk | Next action |
 |---|---:|---|---:|---|---|---|
-| `S_P&L` | 30% proxy | Realized portfolio value from A decisions | Active labeled-val NPV: `$3.912M`; 9,033 approved; 2,591 prior-declined approvals | Strong | Prior-declined region has no labels, so headline NPV can be optimistic | Keep prior-declined margin guardrail and sensitivity language |
-| `S_traj` | 25% proxy | Accuracy of B cumulative default trajectories on our approved set | Active B CDR MAE: `0.0117`; week-13 mean pred `0.1470` vs actual `0.1465`; interval coverage `0.970` | Stronger | Cohort 13 ages 9-12 and cohort 5 age 13 remain local misses | Keep calibrated B; disclose sparse-cohort/tail limitation in D |
-| `S_cal` | 20% proxy | 90% intervals on A PD and B trajectories contain truth without being too wide | Active A AUROC `0.746`, log loss `0.435`, Brier `0.137`; A bin coverage `1.000`; B coverage `0.970` | Stronger but wider | A intervals are conservative; B intervals widened from `0.0624` to `0.0734` mean width | Defend coverage/width tradeoff and avoid further widening |
-| `S_C` | 10% proxy | Counterfactual PDs match true intervention effects, not naive re-prediction | 900 / 900 C queries; mean CF PD `0.295`; 74 tail-support queries; 82 monotone guards | Ready | True intervention labels are hidden; causal assumptions drive accuracy | Defend treatment plan, support checks, shrinkage, and monotone neutralization |
-| `S_write` | 15% proxy | Clear methodological defense | `submission_D_writeup.pdf` present; 3 pages; validator clean; team `Global Intuit Hackers` | Ready | PDF must be regenerated after any markdown edit | Keep concise D and re-run validator |
+| `S_P&L` | 30% proxy | Realized portfolio value from A decisions | Active capped labeled-val NPV: `$2.712M`; 7,571 approved; 1,937 prior-declined approvals; capped headline `$14.045M` | Stronger verified value | Prior-declined region has no labels, so headline NPV can be optimistic | Keep feature-regime value layer and prior-declined margin floor |
+| `S_traj` | 25% proxy | Accuracy of B cumulative default trajectories on our approved set | Active B CDR MAE: `0.0062`; week-13 mean pred `0.1253` vs actual `0.1255`; interval coverage `1.000` | Stronger | Cohort 13 early/mid ages remain largest residuals but are covered | Keep Markov-switching B; disclose sparse-cohort/tail limitation in D |
+| `S_cal` | 20% proxy | 90% intervals on A PD and B trajectories contain truth without being too wide | Active A AUROC `0.740`, log loss `0.439`, Brier `0.138`; A bin coverage `1.000`; B coverage `1.000` | Stronger and sharper | A intervals are conservative; B mean width now `0.0556` | Defend coverage/width tradeoff and avoid further widening |
+| `S_C` | 10% proxy | Counterfactual PDs match true intervention effects, not naive re-prediction | 900 / 900 C queries; mean CF PD `0.295`; 74 tail-support queries; 93 monotone guards | Ready | True intervention labels are hidden; causal assumptions drive accuracy | Defend treatment plan, support checks, shrinkage, and monotone neutralization |
+| `S_write` | 15% proxy | Clear methodological defense | `submission_D_writeup.pdf` present; 4 pages; validator clean; team `Global Intuit Hackers` | Ready | PDF must be regenerated after any markdown edit | Keep concise D and re-run validator |
 
 ## Submission Readiness
 
 | Deliverable | Required artifact | Current artifact | Completeness | Readiness metric | Current value | Score impact |
 |---|---|---|---:|---|---:|---|
-| A | `submission_A_decisions.csv` | Present | 100% file-ready | Approved applicants | 9,033 | Drives `S_P&L`, B denominator, and A interval calibration |
-| A | PD and 90% PI columns | Present | Final report-card audit complete | AUROC / log loss / Brier | `0.746 / 0.435 / 0.137` | Drives `S_cal`; not directly enough for `S_P&L` |
+| A | `submission_A_decisions.csv` | Present | 100% file-ready | Approved applicants | 7,571 | Drives `S_P&L`, B denominator, and A interval calibration |
+| A | PD and 90% PI columns | Present | Final report-card audit complete | AUROC / log loss / Brier | `0.740 / 0.439 / 0.138` | Drives `S_cal`; not directly enough for `S_P&L` |
 | B | `submission_B_trajectory.csv` | Present | 100% file-ready for current A | Cohort-age rows | 169 | Drives `S_traj` and B interval calibration |
-| B | CDR forecasts and intervals | Present | Tail-calibrated for current A | CDR MAE / coverage | `0.0117 / 0.970` | Strong enough to keep unless A changes |
+| B | CDR forecasts and intervals | Present | Markov-switching calibrated for current A | CDR MAE / coverage | `0.0062 / 1.000` | Strong enough to keep unless A changes |
 | C | `submission_C_counterfactuals.csv` | Present | 100% file-ready | Query coverage | 900 / 900 | Drives `S_C`; methodology must be defended |
-| D | `submission_D_writeup.pdf` | Present | 100% file-ready | 4-page limit | 3 pages | 15% direct score plus defense of all modeling choices |
+| D | `submission_D_writeup.pdf` | Present | 100% file-ready | 4-page limit | 4 pages | 15% direct score plus defense of all modeling choices |
 | Package | Flat submission folder | A/B/C/D present | Passes validator cleanly | `validate_submission.py` | 0 errors, 0 warnings | Ready to upload structurally |
 
 ## Model Performance Metrics to Track
@@ -50,12 +50,12 @@ This table is the better comparison to use during the hackathon because it ties 
 
 | Candidate / policy | `S_P&L` proxy | `S_traj` proxy | `S_cal` proxy | `S_C` readiness | `S_write` readiness | Hackathon risk | Recommendation |
 |---|---:|---:|---:|---|---|---|---|
-| Steven | Labeled-val NPV `$3.912M`; headline expected NPV `$14.822M`; 9,033 approved | B MAE `0.0117`, coverage `0.970`, mean width `0.0734` on current approved set | AUROC `0.746`; log loss `0.435`; Brier `0.137`; A bin interval coverage `1.000` | 900 / 900 queries; 30 feature treatments; 82 raw sign violations guarded to 0 final | Present with team `Global Intuit Hackers` | Best current complete package; reject-region still assumption-driven | Keep active; do not tinker unless a full rebuild beats this across A/B/C/D |
-| Previous direct-NPV blend | Labeled-val NPV `$3.835M`; headline expected NPV `$14.459M`; 9,199 approved | Old B MAE `0.0145`; stale after A switch | AUROC `0.755`; log loss `0.431`; Brier `0.135` | Not tied to current package | Draft now exists but not based on this policy | Better probability metrics but lower NPV and stale current B | Keep as fallback only |
-| HGB no-prior-score challenger | Labeled-val NPV `$3.835M`; 9,036 approved; 3,115 prior-declined approvals | Not rebuilt yet | AUROC `0.753`; log loss `0.431`; Brier `0.136` | Missing | Missing | Near-tie with active, no clear score lift | Useful robustness check, not a clear replacement |
-| Ayush branch, current clone | Slide-formula labeled-val NPV `$3.839M`; headline `$10.387M`; avoids LGD trap | Unknown locally | Uses prior score; branch model is HGB bootstrap ensemble | Unknown | Unknown | Conservative on prior-declined region; may leave `S_P&L` on table | Good sanity benchmark for NPV formula and LGD |
-| Ronil branch, current clone | Slide-formula labeled-val NPV `$3.080M`; headline `$10.298M`; avoids LGD trap | Has B/C files in branch, not scored here | Drops prior score; HGB + logistic blend | Has branch C | Unknown | Lower verifiable A value in current clone | Mine C/writeup ideas, not A policy |
-| Abhi branch, generated A | Slide-formula labeled-val NPV `$1.362M`; headline `$4.528M` | Unknown | CatBoost + isotonic but LGD trap present | Unknown | Unknown | Falls into `LGD ~= 0.91` recovery trap and underfunds | Do not use economics; use only as warning case |
+| Steven final | Capped labeled-val NPV `$2.712M`; capped headline `$14.045M`; 7,571 approved; 1,937 prior-declined approvals | B MAE `0.0062`, coverage `1.000`, mean width `0.0556` on current approved set | AUROC `0.740`; log loss `0.439`; Brier `0.138`; A bin interval coverage `1.000` | 900 / 900 queries; 30 feature treatments; 93 raw sign violations guarded to 0 final | Present with team `Global Intuit Hackers` | Best current capped complete package; lower headline but better verified value | Freeze unless hidden-risk preference shifts sharply conservative |
+| Steven previous | Capped labeled-val NPV `$2.652M`; capped headline `$14.706M`; 7,973 approved; 2,145 prior-declined approvals | B MAE `0.0066`, coverage `1.000`, mean width `0.0556` after Markov B | AUROC `0.740`; log loss `0.439`; Brier `0.138`; A bin interval coverage `1.000` | 900 / 900 queries; same C file | Older D text | More approvals and higher headline, but lower verified capped NPV | Replaced by feature-regime value layer |
+| Ayush branch, current clone | Capped labeled-val NPV `$2.628M`; capped headline `$10.263M`; 5,883 approved; 0 prior-declined approvals | Unknown locally | AUROC `0.758`; uses prior score; branch model is HGB bootstrap ensemble | Unknown | Unknown | Safest reject-region floor but leaves headline upside on table | Main conservative benchmark |
+| Ronil branch, current clone | Capped labeled-val NPV `$2.200M`; capped headline `$10.181M`; 5,327 approved; 943 prior-declined approvals | Has B/C files in branch, not scored here | AUROC `0.757`; drops prior score; HGB + logistic blend | Has branch C | Unknown | Lower verified and lower headline than Steven/Ayush | Mine C/writeup ideas, not A policy |
+| Abhi branch, generated A | Capped labeled-val NPV `$1.115M`; capped headline `$4.403M`; 2,229 approved; 389 prior-declined approvals | Unknown | AUROC `0.764`; CatBoost + isotonic | Unknown | Unknown | Falls into empirical-recovery/LGD trap and underfunds | Do not use economics; use only as warning case |
+| Previous direct-NPV blend | Capped labeled-val NPV `$2.596M`; capped headline `$14.326M`; 9,199 approved | Old B stale after A switch | AUROC `0.755`; log loss `0.431`; Brier `0.135` | Not tied to current package | Draft now exists but not based on this policy | Better probability metrics but worse capped P&L package | Keep as fallback only |
 
 ## Trap-Factor View
 
@@ -63,7 +63,7 @@ Keep this thinner table for diagnosis, not for final strategy ranking.
 
 | Person / policy | Model family | LGD/economics assumption | Break-even decision rule | Keeps prior-underwriter score | Funds prior-declined region | Recovery trap? | Main lesson |
 |---|---|---|---|---|---|---|---|
-| Steven | Compact raw valid-prior LightGBM | Exact brief cash-flow formula via active timing/recovery curves | NPV margin threshold `-0.025` plus prior-declined margin floor `0.03` | No | Yes, with guardrail | Avoided | Best current complete A/B/C/D package |
+| Steven | Compact risk-factor LightGBM | 60-day draw-capped cash-flow via active timing/recovery curves | NPV margin threshold plus 3x prior-declined default-odds stress | No | Yes, with guardrail | Avoided | Best current complete A/B/C/D package |
 | Previous Steven blend | Calibrated HGB/logistic + direct NPV blend | Exact brief cash-flow formula with timing/recovery | NPV margin sign with buffer, not flat PD | Mostly avoids direct prior-score dependence in active comparison | Yes | Avoided | Useful fallback with better AUROC/log loss |
 | Ayush | HGB bootstrap ensemble | `LGD = 0.30` amortization-aware shorthand | Flat break-even PD around `0.226` | Yes | No | Avoided | Very good verifiable NPV; conservative reject-region stance |
 | Ronil | HGB + logistic blend | `LGD = 0.30` amortization-aware shorthand | Flat break-even PD around `0.226` | No | Yes | Avoided | Aggressive reject-region funding needs sensitivity proof |
@@ -76,14 +76,14 @@ Use this as the working burndown table.
 | Workstream | Progress metric | Current value | Target before submit | Owner action |
 |---|---:|---:|---:|---|
 | A file validity | Expected applicant rows | 13,306 applicants | 13,306, validator clean | Already file-ready |
-| A economics | Labeled-val realized NPV | `$3.912M` active, `$3.835M` previous blend | Freeze unless sensitivity audit rejects it | Run reject-region sensitivity only if time remains |
-| A approval policy | Test approval rate | `67.9%` active, `69.0%` previous blend | Defensible by NPV sign and support audit | Avoid arbitrary flat PD threshold |
+| A economics | Capped labeled-val realized NPV | `$2.712M` active, `$2.628M` Ayush | Freeze unless sensitivity audit rejects it | Keep feature-regime value layer |
+| A approval policy | Test approval rate | `56.9%` active, `44.2%` Ayush | Defensible by NPV sign and support audit | Avoid arbitrary flat PD threshold |
 | B file validity | Expected cohort-age rows | 169 | 169, monotone, validator clean | Already file-ready for active A |
-| B accuracy | CDR MAE | `0.0117` after tail calibration | Keep near current level after any A rebuild | Rebuild B if A changes |
-| B tail/cohort risk | Worst absolute CDR error | `0.0489`, cohort 13 age 12 | Do not worsen coverage/width tradeoff | Mention sparse-cohort risk; avoid overfitting B late cohorts |
+| B accuracy | CDR MAE | `0.0062` after Markov-switching calibration | Keep near current level after any A rebuild | Rebuild B if A changes |
+| B tail/cohort risk | Worst absolute CDR error | `0.0267`, cohort 13 age 5 | Do not worsen coverage/width tradeoff | Mention sparse-cohort risk; avoid overfitting B late cohorts |
 | C file validity | Intervention query rows | 900 / 900 | 900 / 900 | Already file-ready |
 | C methodology | Causal-safe intervention logic | Implemented with support checks and shrinkage | Feature class rules plus support checks | Defend in writeup |
-| D writeup | 4-page PDF | Present, 3 pages, team `Global Intuit Hackers` | Present, concise, formula-backed | Rebuild PDF after any markdown edit |
+| D writeup | 4-page PDF | Present, 4 pages, team `Global Intuit Hackers` | Present, concise, formula-backed | Rebuild PDF after any markdown edit |
 | Final package | Validator result | PASS, 0 errors, 0 warnings | PASS plus D included | Re-run validator after any change |
 
 ## Decision Rule

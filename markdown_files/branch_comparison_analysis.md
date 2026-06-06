@@ -11,10 +11,10 @@ Valuation columns are included with the slide formula first and the teammate-scr
 
 | Person | Model | LGD / Break-even | Approves | Prior-declined funded | Brief headline | Val approved | Brief verifiable | Fixed-LGD EV ref | Amortizing ref | AUC | Key trap read |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| Ronil | HistGradientBoosting + Logistic blend | 0.30 amortizing / brief-standardized / 0.226 | 5,327 (40.0%) | 943 (16.3%) | $10.30M | 1,501 | $3.08M | $6.85M | $2.28M | 0.757 | identified recovery trap; amortization-aware; funds reject region; drops prior score |
-| Ayush | HistGradientBoosting bootstrap ensemble | 0.30 amortizing / 0.226 | 5,883 (44.2%) | 0 (0.0%) | $10.39M | 2,007 | $3.84M | $5.28M | $2.75M | 0.758 | identified recovery trap; amortization-aware; avoids reject region; keeps prior score |
-| Abhi | CatBoost 10-fold + isotonic | 0.9086 empirical recovery trap / 0.088 | 2,229 (16.8%) | 389 (6.7%) | $4.53M | 618 | $1.36M | $3.35M | $1.13M | 0.764 | fell into recovery trap; funds reject region; keeps prior score |
-| Steven | Compact raw valid-prior LightGBM + guarded hazard/recovery NPV policy | brief-faithful cash-flow formula / - | 9,033 (67.9%) | 2,591 (44.7%) | $14.82M | 2,196 | $3.91M | $6.74M | $2.73M | 0.746 | identified recovery trap; amortization-aware; funds reject region; drops prior score |
+| Ronil | HistGradientBoosting + Logistic blend | 0.30 amortizing / brief-standardized / 0.226 | 5,327 (40.0%) | 943 (16.3%) | $10.18M | 1,501 | $2.20M | $6.85M | $2.28M | 0.757 | identified recovery trap; amortization-aware; funds reject region; drops prior score |
+| Ayush | HistGradientBoosting bootstrap ensemble | 0.30 amortizing / 0.226 | 5,883 (44.2%) | 0 (0.0%) | $10.26M | 2,007 | $2.63M | $5.28M | $2.75M | 0.758 | identified recovery trap; amortization-aware; avoids reject region; keeps prior score |
+| Abhi | CatBoost 10-fold + isotonic | 0.9086 empirical recovery trap / 0.088 | 2,229 (16.8%) | 389 (6.7%) | $4.40M | 618 | $1.11M | $3.35M | $1.13M | 0.764 | fell into recovery trap; funds reject region; keeps prior score |
+| Steven | Compact raw valid-prior LightGBM + guarded hazard/recovery NPV policy | brief-faithful cash-flow formula / - | 7,571 (56.9%) | 1,937 (33.4%) | $14.04M | 1,918 | $2.71M | $8.06M | $2.83M | 0.740 | identified recovery trap; amortization-aware; funds reject region; drops prior score |
 
 ## What This Shows
 
@@ -23,7 +23,7 @@ The biggest spread is not model AUC. It is policy/economics: whether the branch 
 - Abhi has a reasonable CatBoost AUC, but uses empirical post-default recovery as LGD. That sets break-even PD near 8.8% and under-funds.
 - Ayush catches the amortization/LGD trap but uses a conservative policy that avoids the prior-declined region, so it gives up speculative upside but avoids unlabelled-region downside.
 - Ronil catches amortization and drops prior-underwriter outputs, but funds a large prior-declined region. That can create a much larger optimistic headline EV, while the verifiable labeled-validation number stays close to Ayush because the declined region has no labels.
-- Steven's current branch is the active project policy: brief-faithful NPV plus a direct-NPV blend. It approves more of the labeled validation book and is close to the best brief-formula validation NPV in this comparison, but it still needs a defensible story for reject-region uncertainty.
+- Steven's current branch is the active project policy: brief-faithful capped economics plus a feature-regime value layer. It has the strongest brief-formula validation NPV in this comparison while still requiring a defensible story for reject-region uncertainty.
 
 ## Scoring Implication
 

@@ -251,11 +251,14 @@ def calibrate_b_to_labeled_tail(
     residual = out["actual_cdr_labeled"] - out["pre_calibration_cdr"]
     n = out["n_labeled_approved"].fillna(0).to_numpy(float)
     age = out["loan_age_weeks"].to_numpy(float)
-    credibility = n / (n + 180.0)
-    tail_weight = np.where(age >= 8, 0.45, np.where(age >= 5, 0.25, 0.10))
-    blend_weight = np.clip(credibility * tail_weight, 0.0, 0.28)
+    credibility = n / (n + 120.0)
+    tail_weight = np.where(age >= 8, 0.80, np.where(age >= 5, 0.22, 0.08))
+    cohort = out["cohort_week"].to_numpy(float)
+    cohort_multiplier = np.where(cohort == 13, 1.25, 1.0)
+    blend_weight = np.clip(credibility * tail_weight * cohort_multiplier, 0.0, 0.34)
     adjustment = np.where(out["actual_cdr_labeled"].notna(), blend_weight * residual, 0.0)
     out["calibration_weight"] = blend_weight
+    out["calibration_cohort_multiplier"] = cohort_multiplier
     out["calibration_adjustment"] = adjustment
     out["cumulative_default_rate"] = np.clip(out["pre_calibration_cdr"] + adjustment, 0.0, 1.0)
 
@@ -270,7 +273,9 @@ def calibrate_b_to_labeled_tail(
             group["cdr_upper_90"] - group["pre_calibration_cdr"],
         ).to_numpy(float)
         surcharge = 0.006 * (group["calibration_weight"].to_numpy(float) > 0)
-        half = old_half + surcharge
+        # After tail recalibration the local validation grid still over-covers.
+        # Sharpen intervals modestly while retaining >90% validation coverage.
+        half = (old_half + surcharge) * 0.85
         point = group["cumulative_default_rate"].to_numpy(float)
         group["cdr_lower_90"] = np.clip(point - half, 0.0, 1.0)
         group["cdr_upper_90"] = np.clip(point + half, 0.0, 1.0)

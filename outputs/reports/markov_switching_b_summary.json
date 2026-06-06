@@ -1,0 +1,154 @@
+{
+  "objective": "Markov-switching residual calibration for Deliverable B cohort timing.",
+  "promoted": true,
+  "active_summary": {
+    "mean_abs_cdr_error": 0.009252741223459968,
+    "week13_mean_actual_cdr": 0.12548319509849176,
+    "week13_mean_predicted_cdr": 0.12141285582038451,
+    "interval_coverage": 0.9881656804733728,
+    "mean_interval_width": 0.061633006935324995,
+    "median_interval_width": 0.06626898804053549
+  },
+  "best_candidate": {
+    "mean_abs_cdr_error": 0.006160467954263938,
+    "week13_mean_actual_cdr": 0.12548319509849176,
+    "week13_mean_predicted_cdr": 0.12533058215748155,
+    "interval_coverage": 1.0,
+    "mean_interval_width": 0.05559908998389128,
+    "median_interval_width": 0.05964208923648204,
+    "candidate": "switch_strength_0.85_blend_0.00_interval_0.90",
+    "strength": 0.85,
+    "transition_blend": 0.0,
+    "interval_scale": 0.9,
+    "mean_abs_cdr_error_improvement": 0.0030922732691960296
+  },
+  "cohort_states": [
+    {
+      "cohort_week": 1,
+      "n_labeled_approved": 147,
+      "tail_residual": 0.0016631107276060333,
+      "week13_residual": 0.010804497219172815,
+      "state": 1,
+      "state_name": "middle_timing"
+    },
+    {
+      "cohort_week": 2,
+      "n_labeled_approved": 166,
+      "tail_residual": 0.007370741214827686,
+      "week13_residual": 0.012045249027232169,
+      "state": 2,
+      "state_name": "high_timing"
+    },
+    {
+      "cohort_week": 3,
+      "n_labeled_approved": 146,
+      "tail_residual": 0.008211854082455098,
+      "week13_residual": 0.01831510914687695,
+      "state": 2,
+      "state_name": "high_timing"
+    },
+    {
+      "cohort_week": 4,
+      "n_labeled_approved": 173,
+      "tail_residual": -0.005011758892342615,
+      "week13_residual": -0.012948402953641067,
+      "state": 0,
+      "state_name": "low_timing"
+    },
+    {
+      "cohort_week": 5,
+      "n_labeled_approved": 147,
+      "tail_residual": 0.01756631283424941,
+      "week13_residual": 0.032274379810274756,
+      "state": 2,
+      "state_name": "high_timing"
+    },
+    {
+      "cohort_week": 6,
+      "n_labeled_approved": 149,
+      "tail_residual": -0.0006544780402724243,
+      "week13_residual": -0.01032539268643419,
+      "state": 1,
+      "state_name": "middle_timing"
+    },
+    {
+      "cohort_week": 7,
+      "n_labeled_approved": 165,
+      "tail_residual": -0.010557753714302802,
+      "week13_residual": 0.0017298524731855502,
+      "state": 0,
+      "state_name": "low_timing"
+    },
+    {
+      "cohort_week": 8,
+      "n_labeled_approved": 161,
+      "tail_residual": 0.0004756605852368201,
+      "week13_residual": 0.009575159651475457,
+      "state": 1,
+      "state_name": "middle_timing"
+    },
+    {
+      "cohort_week": 9,
+      "n_labeled_approved": 129,
+      "tail_residual": -0.010870527599949885,
+      "week13_residual": -0.006312446727128565,
+      "state": 0,
+      "state_name": "low_timing"
+    },
+    {
+      "cohort_week": 10,
+      "n_labeled_approved": 160,
+      "tail_residual": 0.0019508361302914372,
+      "week13_residual": 0.010944148052138503,
+      "state": 1,
+      "state_name": "middle_timing"
+    },
+    {
+      "cohort_week": 11,
+      "n_labeled_approved": 134,
+      "tail_residual": 0.006896788538558875,
+      "week13_residual": 0.014583504945718806,
+      "state": 2,
+      "state_name": "high_timing"
+    },
+    {
+      "cohort_week": 12,
+      "n_labeled_approved": 121,
+      "tail_residual": 0.013407328962814226,
+      "week13_residual": 0.0064335080451684845,
+      "state": 2,
+      "state_name": "high_timing"
+    },
+    {
+      "cohort_week": 13,
+      "n_labeled_approved": 120,
+      "tail_residual": -0.03151839041133139,
+      "week13_residual": -0.03420475538864523,
+      "state": 0,
+      "state_name": "low_timing"
+    }
+  ],
+  "transition_matrix": {
+    "from_low_timing": {
+      "to_low_timing": 0.16666666666666666,
+      "to_middle_timing": 0.5,
+      "to_high_timing": 0.3333333333333333
+    },
+    "from_middle_timing": {
+      "to_low_timing": 0.42857142857142855,
+      "to_middle_timing": 0.14285714285714285,
+      "to_high_timing": 0.42857142857142855
+    },
+    "from_high_timing": {
+      "to_low_timing": 0.375,
+      "to_middle_timing": 0.25,
+      "to_high_timing": 0.375
+    }
+  },
+  "outputs": {
+    "comparison": "outputs/candidates/markov_switching_b/comparison.csv",
+    "candidate_submission_b": "outputs/candidates/markov_switching_b/submission_B_trajectory.csv",
+    "cohort_states": "outputs/candidates/markov_switching_b/cohort_states.csv",
+    "state_residual_curves": "outputs/candidates/markov_switching_b/state_residual_curves.csv"
+  }
+}

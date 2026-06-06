@@ -1,8 +1,8 @@
 feature_name,query_count,dictionary_group,dictionary_intervenable,causal_treatment_class,delta_shrink_factor,extra_interval_widening,expected_delta_sign_per_unit_increase,predictive_allowed,causal_claim_allowed,reason
 stated_time_in_business,68,self_reported,True,self_report_proxy,0.35,0.035,-1,True,False,Reported age is partly historical identity/proxy rather than a manipulable operating lever.
-observed_revenue_trend_3mo,53,bank_feed,True,observed_business_state,0.85,0.015,0,True,True,Revenue trend is measured business state; retain most model effect with modest measurement uncertainty.
+observed_revenue_trend_3mo,53,bank_feed,True,observed_business_state,0.85,0.015,-1,True,True,Revenue trend is measured business state; retain most model effect with modest measurement uncertainty.
 existing_debt_obligations,52,bureau_credit,True,credit_state_intervention,0.9,0.01,1,True,True,Debt burden is current credit state; retain most model effect and recompute debt ratios.
-observed_revenue_volatility,52,bank_feed,True,observed_business_state,0.85,0.015,0,True,True,Revenue volatility is measured business state; retain most model effect with modest measurement uncertainty.
+observed_revenue_volatility,52,bank_feed,True,observed_business_state,0.85,0.015,1,True,True,Revenue volatility is measured business state; retain most model effect with modest measurement uncertainty.
 observed_cash_balance_p10,51,bank_feed,True,observed_business_state,0.85,0.015,-1,True,True,Cash balance is measured liquidity; retain most model effect with modest measurement uncertainty.
 invoice_payment_delinquency_rate,50,platform_engagement,True,platform_state_intervention,0.85,0.015,1,True,True,Invoice delinquency is observed payment behavior; retain most effect.
 recent_inquiries_count_6mo,49,bureau_credit,True,credit_context_intervention,0.75,0.02,1,True,True,Recent inquiries are partly demand/urgency proxy; shrink modestly.
@@ -11,21 +11,21 @@ observed_overdraft_count_3mo,47,bank_feed,True,observed_business_state,0.9,0.01,
 application_channel,45,application_context,True,application_context_proxy,0.5,0.035,0,True,False,Channel is confounded by applicant mix and acquisition context; do not treat as a pure risk lever.
 owner_personal_credit_band,45,bureau_credit,True,credit_state_intervention,0.85,0.015,0,True,True,Credit band is a creditworthiness proxy; retain most effect but widen for coarse binning.
 observed_monthly_revenue_avg_3mo,42,bank_feed,True,observed_business_state,0.85,0.015,-1,True,True,Observed revenue is a business-state proxy; use most of the model delta and recompute revenue ratios.
-requested_amount,40,self_reported,True,amount_burden_intervention,1.0,0.01,0,True,True,Direct loan-size intervention; engineered burden ratios are recomputed.
+requested_amount,40,self_reported,True,amount_burden_intervention,1.0,0.01,1,True,True,Direct loan-size intervention; engineered burden ratios are recomputed.
 stated_annual_revenue,36,self_reported,True,self_report_proxy,0.3,0.04,-1,True,False,Reported revenue is confounded by true business scale and reporting behavior; shrink toward baseline.
 multi_lender_inquiry_count_30d,34,application_context,True,application_context_proxy,0.65,0.025,1,True,False,Multi-lender inquiry count is an urgency/context proxy; shrink toward baseline.
 account_age_days,20,platform_engagement,False,historical_or_proxy,0.35,0.035,-1,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
 platform_active_months,19,platform_engagement,False,historical_or_proxy,0.35,0.035,-1,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
-days_since_last_inquiry_elsewhere,16,application_context,False,historical_or_proxy,0.35,0.035,0,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
+days_since_last_inquiry_elsewhere,16,application_context,False,historical_or_proxy,0.35,0.035,-1,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
 payroll_regularity_score,15,bank_feed,True,observed_business_state,0.85,0.015,-1,True,True,Payroll regularity is measured operating stability; retain most model effect.
 employee_count_bucket,14,business_identity,False,historical_or_proxy,0.35,0.035,0,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
 prior_loans_default_count,13,platform_engagement,False,historical_or_proxy,0.35,0.035,1,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
 intended_use_of_funds,12,self_reported,False,historical_or_proxy,0.35,0.035,0,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
 sector,12,business_identity,False,historical_or_proxy,0.35,0.035,0,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
 vintage_years,12,business_identity,False,historical_or_proxy,0.35,0.035,-1,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
-bookkeeping_recency_days,11,platform_engagement,False,historical_or_proxy,0.35,0.035,0,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
+bookkeeping_recency_days,11,platform_engagement,False,historical_or_proxy,0.35,0.035,1,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
 geography_region,11,business_identity,False,historical_or_proxy,0.35,0.035,0,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
-days_since_last_external_decline,9,bureau_credit,False,historical_or_proxy,0.35,0.035,0,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
+days_since_last_external_decline,9,bureau_credit,False,historical_or_proxy,0.35,0.035,-1,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
 has_linked_bank_feed,9,bank_feed,False,measurement_process_intervention,0.15,0.07,0,True,False,"Bank-feed linkage changes observability and selection, not business health itself."
 prior_loans_amount_total,9,platform_engagement,False,historical_or_proxy,0.35,0.035,0,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.
 prior_loans_count,7,platform_engagement,False,historical_or_proxy,0.35,0.035,0,True,False,Non-intervenable historical/context/proxy field; shrink model delta and widen interval.

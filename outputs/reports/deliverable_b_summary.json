@@ -1,11 +1,14 @@
 {
   "buffer_per_dollar": 0.005,
-  "validation_labeled_realized_npv": 3912480.1426391727,
-  "validation_labeled_approved": 2196,
-  "validation_labeled_approval_rate": 0.8608388867110937,
-  "validation_all_approval_rate": 0.678547560703943,
-  "test_approval_rate": 0.6790291482363616,
-  "approved_eval_total": 9033,
+  "validation_labeled_realized_npv": 2711813.9989971323,
+  "validation_labeled_approved": 1918,
+  "validation_labeled_approval_rate": 0.7518620148961191,
+  "validation_all_approval_rate": 0.569169079973268,
+  "test_approval_rate": 0.5689009867301803,
+  "approved_eval_total": 7571,
   "submission_b_rows": 169,
-  "submission_b_week13_mean": 0.14695220270795
+  "submission_b_week13_mean": 0.12533058215748152,
+  "markov_switching_mean_abs_cdr_error": 0.006160467954263938,
+  "markov_switching_interval_coverage": 1.0,
+  "markov_switching_mean_interval_width": 0.055599089983891264
 }

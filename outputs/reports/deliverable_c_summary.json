@@ -53,8 +53,8 @@
     "mean_width": 0.07181817781530594,
     "median_width": 0.055596442549873865
   },
-  "mean_predicted_pd_cf": 0.29517653537810473,
-  "mean_interval_width": 0.11361693853598509,
+  "mean_predicted_pd_cf": 0.29514623790605443,
+  "mean_interval_width": 0.11382407340682439,
   "outside_min_max_queries": 0,
   "outside_p01_p99_queries": 74,
   "unseen_category_queries": 0,
@@ -72,9 +72,9 @@
   "historical_or_proxy_queries": 165,
   "direct_intervention_queries": 543,
   "sign_effect_epsilon": 0.0025,
-  "raw_sign_violation_queries": 82,
-  "monotonic_guard_applied_queries": 82,
-  "sign_check_eligible_queries": 206,
+  "raw_sign_violation_queries": 93,
+  "monotonic_guard_applied_queries": 93,
+  "sign_check_eligible_queries": 280,
   "sign_violation_queries": 0,
   "excluded_prior_policy_tokens": [
     "prior_underwriter",

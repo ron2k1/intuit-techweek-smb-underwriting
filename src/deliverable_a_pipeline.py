@@ -36,10 +36,8 @@ from src.economics import (
     realized_npv,
 )
 from src.timing import (
-    HazardModel,
     N_WEEKS,
-    RecoveryModel,
-    expected_default_day,
+    fit_default_day_model,
     fit_hazard_model,
     fit_recovery_model,
 )
@@ -879,13 +877,14 @@ def main() -> None:
     hazard_model = fit_hazard_model(labeled_full_x, labeled_full, sample_weight=weeks_sample_weight)
 
     defaulted_train = train[train["default_flag"] == 1]
+    default_day_model = fit_default_day_model(train_x, defaulted_train)
     recovery_model = fit_recovery_model(train_x, defaulted_train)
 
     _, validation_cum = hazard_model.predict_curves(validation_x)
     _, test_cum = hazard_model.predict_curves(test_x)
     _, cal_cum = hazard_model.predict_curves(cal_x)
-    val_t_star = expected_default_day(validation_cum)
-    test_t_star = expected_default_day(test_cum)
+    val_t_star = default_day_model.predict_day(validation_x)
+    test_t_star = default_day_model.predict_day(test_x)
     val_rec = recovery_model.predict_rate(validation_x)
     test_rec = recovery_model.predict_rate(test_x)
 

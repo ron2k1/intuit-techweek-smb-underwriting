@@ -9,10 +9,10 @@ This mirrors the teammate screenshot categories, but uses the hackathon slide fo
 | Break-even PD | 0.226 | 0.226 | 0.088 | - |
 | Keeps `prior_underwriter_score`? | No | Yes | Yes | No |
 | Funds prior-declined region? | Yes | No | Yes | Yes |
-| Headline NPV (slide formula) | $10.30M | $10.39M | $4.53M | $14.82M |
-| Verifiable NPV (slide formula) | $3.08M | $3.84M | $1.36M | $3.91M |
-| Headline NPV (fixed-LGD reference) | $6.85M | $5.28M | $3.35M | $6.74M |
-| Verifiable NPV (amortizing reference) | $2.28M | $2.75M | $1.13M | $2.73M |
+| Headline NPV (slide formula) | $10.18M | $10.26M | $4.40M | $14.04M |
+| Verifiable NPV (slide formula) | $2.20M | $2.63M | $1.11M | $2.71M |
+| Headline NPV (fixed-LGD reference) | $6.85M | $5.28M | $3.35M | $8.06M |
+| Verifiable NPV (amortizing reference) | $2.28M | $2.75M | $1.13M | $2.83M |
 | Recovery trap | Avoided | Avoided | Fell in | Avoided |
 
 ## Notes

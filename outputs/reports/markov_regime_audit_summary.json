@@ -1,0 +1,94 @@
+{
+  "selected_regime_count": 2,
+  "bic_table": [
+    {
+      "n_regimes": 2,
+      "bic": -4024.1229951446826
+    },
+    {
+      "n_regimes": 3,
+      "bic": -3053.174789424013
+    },
+    {
+      "n_regimes": 4,
+      "bic": -2105.6003182013174
+    },
+    {
+      "n_regimes": 5,
+      "bic": -1131.2490867118577
+    }
+  ],
+  "labeling": "regime 0 has highest weekly mean observed_revenue_trend_3mo; larger ids are weaker revenue-trend states",
+  "regime_features": [
+    "observed_revenue_trend_3mo_mean",
+    "observed_revenue_trend_3mo_missing",
+    "observed_monthly_revenue_avg_3mo_mean",
+    "observed_monthly_revenue_avg_3mo_missing",
+    "observed_revenue_volatility_mean",
+    "observed_revenue_volatility_missing",
+    "observed_cash_balance_p10_mean",
+    "observed_cash_balance_p10_missing",
+    "requested_amount_mean",
+    "requested_amount_missing",
+    "requested_amount_to_observed_revenue_mean",
+    "requested_amount_to_observed_revenue_missing",
+    "existing_debt_obligations_mean",
+    "existing_debt_obligations_missing",
+    "aggregate_credit_utilization_mean",
+    "aggregate_credit_utilization_missing",
+    "invoice_payment_delinquency_rate_mean",
+    "invoice_payment_delinquency_rate_missing",
+    "multi_lender_inquiry_count_30d_mean",
+    "multi_lender_inquiry_count_30d_missing",
+    "has_linked_bank_feed_mean",
+    "has_linked_bank_feed_missing"
+  ],
+  "transition_matrix": {
+    "from_0": {
+      "to_0": 0.9491525423728814,
+      "to_1": 0.05084745762711865
+    },
+    "from_1": {
+      "to_0": 0.05714285714285714,
+      "to_1": 0.9428571428571428
+    }
+  },
+  "active_rank_in_candidate_sweep": 2,
+  "active_exact_threshold": {
+    "candidate": "active_pd_exact_threshold",
+    "threshold": 0.01248385076559354,
+    "validation_labeled_realized_npv": 2654900.6567144124,
+    "validation_labeled_approved": 1976,
+    "validation_labeled_default_rate_approved": 0.13006072874493926,
+    "validation_all_approval_rate": 0.5990198262419247,
+    "test_approval_rate": 0.5994102302370421,
+    "approved_total": 7974,
+    "headline_expected_npv": 14706602.849146985,
+    "auroc": 0.7404036990095291,
+    "log_loss": 0.43901518444875326,
+    "brier": 0.13762517102949567,
+    "mean_pd": 0.21026723178913037
+  },
+  "best_candidate": {
+    "candidate": "regime_1_odds_-0.15",
+    "threshold": 0.020279969666032113,
+    "validation_labeled_realized_npv": 2657249.283513914,
+    "validation_labeled_approved": 1977,
+    "validation_labeled_default_rate_approved": 0.12999494183105717,
+    "validation_all_approval_rate": 0.6088215638226776,
+    "test_approval_rate": 0.6075762731087672,
+    "approved_total": 8090,
+    "headline_expected_npv": 15306712.113300186,
+    "auroc": 0.7404036990095291,
+    "log_loss": 0.4398607064240432,
+    "brier": 0.13743534736534155,
+    "mean_pd": 0.19106499384725745
+  },
+  "outputs": {
+    "weekly regimes": "outputs/reports/markov_regime_weekly_states.csv",
+    "transition matrix": "outputs/reports/markov_regime_transition_matrix.csv",
+    "regime feature summary": "outputs/reports/markov_regime_feature_summary.csv",
+    "active policy by regime": "outputs/reports/markov_regime_active_policy_by_regime.csv",
+    "switching intercept candidates": "outputs/reports/markov_regime_candidate_sweep.csv"
+  }
+}

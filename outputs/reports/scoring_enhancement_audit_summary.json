@@ -1,0 +1,46 @@
+{
+  "a_interval_segments": 22,
+  "a_interval_miss_segments": 0,
+  "a_interval_mean_width": 0.15703124013328001,
+  "b_interval": {
+    "coverage": 0.9526627218934911,
+    "mean_width": 0.06153031177822103,
+    "mean_abs_error": 0.011055659864396812,
+    "worst_abs_error": 0.0398446363735036
+  },
+  "best_shadow_policy_by_labeled_validation_npv": {
+    "policy": "current_guarded",
+    "approved_total": 7973,
+    "prior_declined_approved": 2145,
+    "approval_rate": 0.5992033669021494,
+    "headline_expected_npv": 14706219.845620511,
+    "prior_declined_expected_npv": 4190378.6582722813,
+    "labeled_validation_approved": 1975,
+    "labeled_validation_realized_npv": 2652215.113146782,
+    "mean_pd_approved": 0.12297673972001995
+  },
+  "largest_exposure_segment": {
+    "segment_feature": "has_linked_bank_feed",
+    "segment": "True",
+    "approved": 5220,
+    "share_of_approved": 0.6547096450520506,
+    "prior_declined_approved": 1331,
+    "requested_amount_total": 135117149.12239474,
+    "expected_npv_total": 9676457.549281295,
+    "mean_pd": 0.12208563681596858,
+    "mean_support": 0.6915014719482311,
+    "mean_margin": 0.07275303423204452
+  },
+  "bootstrap_shadow": {
+    "bootstrap_models": 8,
+    "validation_auc_mean": 0.7384384241656105,
+    "validation_auc_min": 0.7222607144533634,
+    "validation_auc_max": 0.7523531896915925,
+    "validation_log_loss_ensemble_mean": 0.4317079237845228,
+    "validation_brier_ensemble_mean": 0.1355198034697801,
+    "mean_pd_std_labeled": 0.04726416117332475,
+    "p90_pd_std_labeled": 0.08772353677764519,
+    "p99_pd_std_labeled": 0.13074942344446366
+  },
+  "recommendation": "Do not replace final A from these diagnostics alone. Current guarded A remains the best balanced policy; use exposure and bootstrap outputs as hidden-risk evidence."
+}

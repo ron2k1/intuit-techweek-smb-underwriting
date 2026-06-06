@@ -1,0 +1,11 @@
+{
+  "bootstrap_models": 8,
+  "validation_auc_mean": 0.7384384241656105,
+  "validation_auc_min": 0.7222607144533634,
+  "validation_auc_max": 0.7523531896915925,
+  "validation_log_loss_ensemble_mean": 0.4317079237845228,
+  "validation_brier_ensemble_mean": 0.1355198034697801,
+  "mean_pd_std_labeled": 0.04726416117332475,
+  "p90_pd_std_labeled": 0.08772353677764519,
+  "p99_pd_std_labeled": 0.13074942344446366
+}

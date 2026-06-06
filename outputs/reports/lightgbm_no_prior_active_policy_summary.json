@@ -1,29 +1,29 @@
 {
-  "policy": "compact_raw_valid_prior_lightgbm",
-  "threshold": -0.024999999999999994,
+  "policy": "lightgbm_no_prior_score",
+  "threshold": 0.020000000000000004,
   "prior_declined_min_margin": 0.03,
-  "validation_labeled_realized_npv": 3912480.1426391727,
-  "validation_labeled_approved": 2196,
-  "validation_labeled_approval_rate": 0.8608388867110937,
-  "validation_labeled_default_rate_approved": 0.09061930783242259,
-  "validation_all_approval_rate": 0.678547560703943,
-  "test_approval_rate": 0.6790291482363616,
-  "approved_total": 9033,
-  "prior_declined_approved_total": 2591,
-  "headline_expected_npv": 14821919.347689167,
-  "prior_declined_expected_npv": 4542002.044689512,
-  "prior_declined_expected_npv_gamma_3x": 2533393.172568271,
+  "validation_labeled_realized_npv": 2597376.481619119,
+  "validation_labeled_approved": 1902,
+  "validation_labeled_approval_rate": 0.7455899647197177,
+  "validation_labeled_default_rate_approved": 0.07255520504731862,
+  "validation_all_approval_rate": 0.6034751615059033,
+  "test_approval_rate": 0.6065555177498015,
+  "approved_total": 8057,
+  "prior_declined_approved_total": 2459,
   "validation_pd_metrics": {
-    "auroc": 0.7461409191193729,
-    "log_loss": 0.43514531744383644,
-    "brier": 0.13654351487044825,
-    "mean_pd": 0.21019593427454744,
+    "auroc": 0.7426921090926162,
+    "log_loss": 0.4372607476565868,
+    "brier": 0.13684659023682177,
+    "mean_pd": 0.21009253789779472,
     "actual_default_rate": 0.2061936495491964
   },
   "validation_interval_coverage_90": {
-    "bin_coverage": 1.0
+    "n": 2551,
+    "bin_coverage": 1.0,
+    "n_bins": 10,
+    "mean_width": 0.1185041620119118,
+    "median_width": 0.12
   },
-  "pd_interval_half_width_floor": 0.08,
-  "feature_count": 32,
-  "replaced_policy_note": "Promoted from compact feature bakeoff: raw application fields plus valid prior-loan history, with prior-policy proxy fields excluded."
+  "pd_interval_half_width_floor": 0.06,
+  "replaced_policy_note": "Promoted from model-family NPV bakeoff; prior-declined guardrail reduces unverified reject-region exposure."
 }

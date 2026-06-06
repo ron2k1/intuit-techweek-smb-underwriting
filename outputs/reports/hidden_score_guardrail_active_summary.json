@@ -1,0 +1,53 @@
+{
+  "guardrail": {
+    "prior_declined_only": true,
+    "reject_default_odds_stress_gamma": 3.0,
+    "reject_stressed_margin_floor": 0.0
+  },
+  "removed_by_guardrail": 487,
+  "removed_prior_declined": 487,
+  "before": {
+    "policy": "before_hidden_score_guardrail",
+    "approved_total": 8460,
+    "prior_declined_approved": 2632,
+    "headline_expected_npv": 15245959.997428961,
+    "prior_declined_expected_npv": 4730118.810080729,
+    "validation_labeled_realized_npv": 2652215.113146782,
+    "validation_labeled_approved": 1975,
+    "headline_expected_npv_reject_gamma_3x": 13260419.423527107,
+    "prior_declined_expected_npv_reject_gamma_3x": 2744578.236178876,
+    "headline_expected_npv_reject_gamma_6x": 11581097.705719665,
+    "prior_declined_expected_npv_reject_gamma_6x": 1065256.518371434,
+    "headline_expected_npv_reject_gamma_10x": 10314740.975639472,
+    "prior_declined_expected_npv_reject_gamma_10x": -201100.21170875878
+  },
+  "after": {
+    "policy": "after_hidden_score_guardrail",
+    "approved_total": 7973,
+    "prior_declined_approved": 2145,
+    "headline_expected_npv": 14706219.845620511,
+    "prior_declined_expected_npv": 4190378.6582722813,
+    "validation_labeled_realized_npv": 2652215.113146782,
+    "validation_labeled_approved": 1975,
+    "headline_expected_npv_reject_gamma_3x": 13474356.448790984,
+    "prior_declined_expected_npv_reject_gamma_3x": 2958515.2614427544,
+    "headline_expected_npv_reject_gamma_6x": 12340396.84602601,
+    "prior_declined_expected_npv_reject_gamma_6x": 1824555.658677781,
+    "headline_expected_npv_reject_gamma_10x": 11431293.333593989,
+    "prior_declined_expected_npv_reject_gamma_10x": 915452.1462457574
+  },
+  "deltas": {
+    "approved_total": -487,
+    "prior_declined_approved": -487,
+    "headline_expected_npv": -539740.15180845,
+    "prior_declined_expected_npv": -539740.1518084481,
+    "validation_labeled_realized_npv": 0.0,
+    "validation_labeled_approved": 0,
+    "headline_expected_npv_reject_gamma_3x": 213937.0252638776,
+    "prior_declined_expected_npv_reject_gamma_3x": 213937.02526387852,
+    "headline_expected_npv_reject_gamma_6x": 759299.1403063461,
+    "prior_declined_expected_npv_reject_gamma_6x": 759299.140306347,
+    "headline_expected_npv_reject_gamma_10x": 1116552.357954517,
+    "prior_declined_expected_npv_reject_gamma_10x": 1116552.357954516
+  }
+}

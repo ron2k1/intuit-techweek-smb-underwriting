@@ -35,7 +35,7 @@ from src.deliverable_a_pipeline import (
 )
 from src.timing import (
     N_WEEKS,
-    expected_default_day,
+    fit_default_day_model,
     fit_hazard_model,
     fit_recovery_model,
 )
@@ -137,12 +137,13 @@ def main() -> None:
     sw = 1.0 / np.clip(prop_train[labeled.index.to_numpy()], 0.08, 1.0)
     sw = np.clip(sw / sw.mean(), 0.25, 8.0)
     hazard = fit_hazard_model(labeled_x, labeled, sample_weight=sw)
+    day_model = fit_default_day_model(train_x, train[train["default_flag"] == 1])
     rec_model = fit_recovery_model(train_x, train[train["default_flag"] == 1])
 
     _, val_cum = hazard.predict_curves(validation_x)
     _, test_cum = hazard.predict_curves(test_x)
-    val_t_star = expected_default_day(val_cum)
-    test_t_star = expected_default_day(test_cum)
+    val_t_star = day_model.predict_day(validation_x)
+    test_t_star = day_model.predict_day(test_x)
     val_rec = rec_model.predict_rate(validation_x)
     test_rec = rec_model.predict_rate(test_x)
 

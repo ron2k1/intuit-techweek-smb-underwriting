@@ -1,0 +1,29 @@
+{
+  "approved_total": 7973,
+  "prior_declined_approved": 2145,
+  "headline_expected_npv": 14706219.845620511,
+  "labeled_validation_realized_npv": 2652215.113146782,
+  "labeled_validation_approved": 1975,
+  "margin_quantiles_all": {
+    "q01": -0.4910741072241888,
+    "q05": -0.2541432639574752,
+    "q25": -0.028206640183387706,
+    "q50": 0.05348254641224204,
+    "q75": 0.0784411523126536,
+    "q95": 0.09155322150437184,
+    "q99": 0.09541511229232717
+  },
+  "margin_quantiles_approved": {
+    "q01": 0.018086761542749855,
+    "q05": 0.03121056275779795,
+    "q25": 0.0613390900940375,
+    "q50": 0.07547665608228948,
+    "q75": 0.08561861053178661,
+    "q95": 0.09276601991404484,
+    "q99": 0.09673628121945488
+  },
+  "prior_declined_break_even_gamma_min_approved": 3.000207704129633,
+  "prior_declined_break_even_gamma_q25_approved": 6.1629580376393225,
+  "prior_declined_break_even_gamma_median_approved": 14.558467405308317,
+  "recommendation": "Keep LightGBM as the global PD backbone, but govern the middle with economics, prior-declined odds-stress, and support diagnostics rather than a separate high-variance local model."
+}

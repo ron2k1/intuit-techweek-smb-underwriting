@@ -28,7 +28,15 @@ def npv_repaid(amount: np.ndarray) -> np.ndarray:
 
 def npv_default(amount: np.ndarray, t_star: np.ndarray, recovery_amount: np.ndarray) -> np.ndarray:
     fee = ORIGINATION_FEE_RATE * amount
-    draws = DAILY_DRAW_FACTOR * amount * np.clip(t_star - 1, 0, None)
+    # Daily ACH draws are only collectible over the 60-day term, so the number of
+    # successful draws before default saturates at TERM_DAYS - 1 (= 59). A defaulter
+    # that trips the day-90 backstop (balance > 0 at day 90) still made at most 59
+    # successful draws. Without this cap, days_to_default up to 90 would credit
+    # D * 89 ~= 1.57 * amount of draws -- more than the full balance owed -- making a
+    # default strictly more profitable than full repayment. (Brief writes D*(t*-1)
+    # with t* defined on [1, 90]; the cap enforces D's own 60-day amortization.)
+    days_drawn = np.clip(t_star - 1, 0, TERM_DAYS - 1)
+    draws = DAILY_DRAW_FACTOR * amount * days_drawn
     return fee + draws + recovery_amount - amount
 
 

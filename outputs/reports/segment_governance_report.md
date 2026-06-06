@@ -2,10 +2,10 @@
 
 ## Current Policy
 - Feature set: `all_engineered`
-- Approved total: 9,033
-- Prior-declined approved: 2,591
-- Labeled validation NPV: $3,912,480
-- Bootstrap 90% interval: $3,515,565 to $4,296,075
+- Approved total: 7,571
+- Prior-declined approved: 1,937
+- Labeled validation NPV: $2,711,814
+- Bootstrap 90% interval: $2,460,717 to $2,952,684
 
 ## Hidden Prior-Declined Risk
 - Local validation has no direct labels for prior-declined applicants, so this report treats that region as hidden-outcome risk.
@@ -13,18 +13,18 @@
 - `break_even_pd` is the default probability that would make the applicant's expected NPV zero under the slide cash-flow formula.
 
 ## Highest-Risk Prior-Declined Approved Segments
-- `pd_risk_tier=high`: 3 approvals, mean PD 0.435, mean support 0.574, expected NPV $2,955, headroom 0.308
-- `cash_balance_quintile=(-11737.562, -2358.579]`: 74 approvals, mean PD 0.193, mean support 0.484, expected NPV $110,923, headroom 0.257
-- `cash_stress_quintile=(1.5, 4.122]`: 84 approvals, mean PD 0.200, mean support 0.493, expected NPV $114,041, headroom 0.206
-- `support_tier=low_support`: 147 approvals, mean PD 0.188, mean support 0.394, expected NPV $210,298, headroom 0.196
-- `revenue_burden_quintile=(0.0155, 0.0617]`: 184 approvals, mean PD 0.185, mean support 0.617, expected NPV $214,396, headroom 0.334
-- `payroll_quintile=(-0.001, 0.339]`: 213 approvals, mean PD 0.155, mean support 0.587, expected NPV $299,001, headroom 0.369
-- `credit_stress_quintile=(0.935, 2.092]`: 227 approvals, mean PD 0.175, mean support 0.503, expected NPV $328,681, headroom 0.279
-- `payroll_quintile=(0.339, 0.458]`: 270 approvals, mean PD 0.150, mean support 0.611, expected NPV $418,961, headroom 0.417
-- `cash_balance_quintile=(-2358.579, -669.589]`: 278 approvals, mean PD 0.177, mean support 0.564, expected NPV $467,838, headroom 0.424
-- `sector=4`: 273 approvals, mean PD 0.131, mean support 0.627, expected NPV $478,369, headroom 0.400
-- `payroll_quintile=(0.458, 0.572]`: 322 approvals, mean PD 0.134, mean support 0.630, expected NPV $555,639, headroom 0.471
-- `owner_personal_credit_band=0`: 386 approvals, mean PD 0.157, mean support 0.500, expected NPV $568,263, headroom 0.338
+- `cash_stress_quintile=(1.5, 4.122]`: 11 approvals, mean PD 0.181, mean support 0.555, expected NPV $12,990, headroom 0.176
+- `cash_balance_quintile=(-11737.562, -2358.579]`: 11 approvals, mean PD 0.131, mean support 0.521, expected NPV $23,157, headroom 0.487
+- `support_tier=low_support`: 16 approvals, mean PD 0.113, mean support 0.418, expected NPV $33,641, headroom 0.345
+- `revenue_burden_quintile=(0.0155, 0.0617]`: 93 approvals, mean PD 0.179, mean support 0.662, expected NPV $114,296, headroom 0.412
+- `credit_stress_quintile=(0.935, 2.092]`: 95 approvals, mean PD 0.131, mean support 0.561, expected NPV $163,767, headroom 0.392
+- `payroll_quintile=(-0.001, 0.339]`: 130 approvals, mean PD 0.127, mean support 0.625, expected NPV $195,982, headroom 0.431
+- `cash_balance_quintile=(-2358.579, -669.589]`: 163 approvals, mean PD 0.129, mean support 0.592, expected NPV $315,868, headroom 0.517
+- `payroll_quintile=(0.339, 0.458]`: 203 approvals, mean PD 0.120, mean support 0.639, expected NPV $347,147, headroom 0.488
+- `credit_stress_quintile=(0.73, 0.935]`: 201 approvals, mean PD 0.128, mean support 0.595, expected NPV $360,044, headroom 0.441
+- `owner_personal_credit_band=0`: 237 approvals, mean PD 0.115, mean support 0.542, expected NPV $398,574, headroom 0.430
+- `sector=4`: 212 approvals, mean PD 0.103, mean support 0.657, expected NPV $405,868, headroom 0.462
+- `revenue_burden_quintile=(0.012, 0.0155]`: 287 approvals, mean PD 0.140, mean support 0.652, expected NPV $433,573, headroom 0.443
 
 ## Output Files
 - `segment_governance_by_factor.csv`

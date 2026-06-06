@@ -1,0 +1,7 @@
+margin_bin,rows,approved,prior_declined_approved,mean_pd_approved,expected_npv_approved,labeled_validation_approved,labeled_validation_default_rate_approved,labeled_validation_realized_npv_approved
+negative_lt_minus_2pct,3514,0,0,,0.0,0,,0.0
+near_negative_minus_2pct_to_0,579,0,0,,0.0,0,,0.0
+thin_positive_0_to_1pct,290,0,0,,0.0,0,,0.0
+low_positive_1_to_3pct,827,364,0,0.2644103891117628,238186.07960930048,127,0.18110236220472442,134876.7724493671
+middle_positive_3_to_6pct,1977,1490,401,0.1944129498225277,2023189.0471824843,347,0.2219020172910663,178817.92667249506
+strong_positive_gt_6pct,6119,6119,1744,0.09716830673565471,12444844.718828727,1501,0.10459693537641572,2338520.4140249193

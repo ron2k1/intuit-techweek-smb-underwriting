@@ -31,7 +31,7 @@ from scripts.experiment_compact_feature_reject_bakeoff import (  # noqa: E402
     raw_valid_prior_columns,
 )
 from src.economics import expected_npv, realized_npv  # noqa: E402
-from src.timing import expected_default_day, fit_hazard_model, fit_recovery_model  # noqa: E402
+from src.timing import fit_default_day_model, fit_recovery_model  # noqa: E402
 
 
 CSV_DIR = PROJECT_ROOT / "data" / "csv-files"
@@ -155,15 +155,13 @@ def build_oof(train: pd.DataFrame, train_x: pd.DataFrame, categorical: list[str]
         )
         val_pd = predict_pd(model, calibrator, train_x.loc[val_idx])
 
-        # Timing/recovery are trained on the same purged historical window. This
+        # Day-level timing and recovery are trained on the same purged historical window. This
         # validates the whole expected-profit decision surface, not only PD rank.
-        hazard = fit_hazard_model(
+        day_model = fit_default_day_model(
             train_x.loc[purged_train_idx],
-            train.loc[purged_train_idx],
-            random_state=RANDOM_SEED + 10 + fold_id,
+            train.loc[purged_train_idx][train.loc[purged_train_idx, "default_flag"] == 1],
         )
-        _, cumulative = hazard.predict_curves(train_x.loc[val_idx])
-        t_star = expected_default_day(cumulative)
+        t_star = day_model.predict_day(train_x.loc[val_idx])
         recovery = fit_recovery_model(train_x, train.loc[purged_train_idx][train.loc[purged_train_idx, "default_flag"] == 1])
         recovery_rate = recovery.predict_rate(train_x.loc[val_idx])
 

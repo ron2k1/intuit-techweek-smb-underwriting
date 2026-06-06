@@ -1,0 +1,75 @@
+{
+  "objective": "Capped-economics feature-regime direct NPV policy for Deliverable A.",
+  "promoted": true,
+  "regime_definition": {
+    "feature": "observed_revenue_trend_3mo",
+    "future_like_rule": "missing or < -0.2",
+    "labeled_train_rows": 51722,
+    "future_like_labeled_train_rows": 30247,
+    "validation_future_like_share": 0.8213410559144576,
+    "test_future_like_share": 0.8278325961211296
+  },
+  "ensemble": {
+    "seeds": [
+      1,
+      2,
+      3,
+      5,
+      7,
+      11,
+      17,
+      23,
+      29,
+      37,
+      41,
+      43,
+      53,
+      71,
+      101,
+      137,
+      2026,
+      2443
+    ],
+    "aggregation": "trimmed_mean_drop_2_each_side"
+  },
+  "prior_declined_score_floor": 0.03,
+  "active_summary": {
+    "policy": "active_submission_before_capped_feature_regime",
+    "threshold": null,
+    "validation_labeled_realized_npv": 2576344.9421162596,
+    "validation_labeled_approved": 2015,
+    "validation_all_approval_rate": 0.6732011583871687,
+    "test_approval_rate": 0.6726777815583532,
+    "approved_total": 8953,
+    "prior_declined_approved_total": 3060,
+    "mean_score_approved": 0.04679423546941855
+  },
+  "candidate_summary": {
+    "policy": "capped_feature_revenue_trend_future_like",
+    "threshold": 0.0,
+    "validation_labeled_realized_npv": 2711813.9989971323,
+    "validation_labeled_approved": 1918,
+    "validation_all_approval_rate": 0.569169079973268,
+    "test_approval_rate": 0.5689009867301803,
+    "approved_total": 7571,
+    "prior_declined_approved_total": 1937,
+    "mean_score_approved": 0.055006515868701644
+  },
+  "delta_validation_labeled_realized_npv": 135469.0568808727,
+  "changed_decisions": 1504,
+  "outputs": {
+    "threshold_sweep": "/Users/stevenyang/Documents/intuit-hackathon/outputs/reports/capped_feature_regime_npv_threshold_sweep.csv",
+    "candidate_submission_a": "/Users/stevenyang/Documents/intuit-hackathon/outputs/candidates/capped_feature_regime_npv/submission_A_decisions.csv"
+  },
+  "pre_feature_archive_summary": {
+    "policy": "pre_feature_regime_archive",
+    "threshold": null,
+    "validation_labeled_realized_npv": 2652215.1131467815,
+    "validation_labeled_approved": 1975,
+    "validation_all_approval_rate": 0.5987970594787257,
+    "test_approval_rate": 0.5994102302370421,
+    "approved_total": 7973,
+    "prior_declined_approved_total": 2145
+  },
+  "delta_vs_pre_feature_archive_validation_labeled_realized_npv": 59598.88585035084
+}

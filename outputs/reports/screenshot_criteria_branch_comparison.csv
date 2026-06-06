@@ -1,5 +1,5 @@
 person,model,lgd_assumption,break_even_pd,keeps_prior_underwriter_score,funds_prior_declined_region,headline_npv_brief_formula,verifiable_npv_labeled_val_brief_formula,headline_npv_fixed_lgd030_reference,verifiable_npv_amortizing_reference,recovery_trap
-Ronil,HistGradientBoosting + Logistic blend,0.30 amortizing / brief-standardized,0.2258748674443266,False,True,10297895.140853269,3080372.976332537,6853410.848527381,2277599.4284081366,Avoided
-Ayush,HistGradientBoosting bootstrap ensemble,0.30 amortizing,0.2258748674443266,True,False,10387141.42948097,3838677.425082708,5279456.5861244025,2754680.6861349447,Avoided
-Abhi,CatBoost 10-fold + isotonic,0.9086 empirical recovery trap,0.0879,True,True,4528069.502445374,1362112.4047574298,3350674.841771948,1128207.151655838,Fell in
-Steven,Compact raw valid-prior LightGBM + guarded hazard/recovery NPV policy,brief-faithful cash-flow formula,,False,True,14821919.347689167,3912480.1426391727,6742058.113168906,2729084.771330801,Avoided
+Ronil,HistGradientBoosting + Logistic blend,0.30 amortizing / brief-standardized,0.2258748674443266,False,True,10181087.56130296,2199845.64717835,6853410.848527381,2277599.4284081366,Avoided
+Ayush,HistGradientBoosting bootstrap ensemble,0.30 amortizing,0.2258748674443266,True,False,10262776.675039617,2628203.659342814,5279456.5861244025,2754680.6861349447,Avoided
+Abhi,CatBoost 10-fold + isotonic,0.9086 empirical recovery trap,0.0879,True,True,4402753.956480235,1114881.1575941667,3350674.841771948,1128207.151655838,Fell in
+Steven,Compact raw valid-prior LightGBM + guarded hazard/recovery NPV policy,brief-faithful cash-flow formula,,False,True,14044601.726382181,2711813.9989971323,8058801.060276452,2826506.946741845,Avoided

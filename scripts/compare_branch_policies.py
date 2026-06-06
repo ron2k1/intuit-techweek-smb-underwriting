@@ -73,7 +73,12 @@ def brief_realized_npv(df: pd.DataFrame) -> np.ndarray:
     t_star = df["days_to_default"].fillna(0).to_numpy(float)
     recovery = df["final_recovered_amount"].fillna(0).to_numpy(float)
     paid = amount * PAID_MARGIN
-    defaulted = FEE * amount + DAILY_DRAW_FACTOR * amount * np.clip(t_star - 1, 0, None) + recovery - amount
+    defaulted = (
+        FEE * amount
+        + DAILY_DRAW_FACTOR * amount * np.clip(t_star - 1, 0, TERM_DAYS - 1)
+        + recovery
+        - amount
+    )
     return np.where(default == 1, defaulted, paid)
 
 
@@ -87,7 +92,7 @@ def brief_expected_npv(
     recovery_amount = expected_recovery_rate * amount
     defaulted = (
         FEE * amount
-        + DAILY_DRAW_FACTOR * amount * np.clip(expected_t_star - 1, 0, None)
+        + DAILY_DRAW_FACTOR * amount * np.clip(expected_t_star - 1, 0, TERM_DAYS - 1)
         + recovery_amount
         - amount
     )

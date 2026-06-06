@@ -1,4 +1,4 @@
-"""Discrete-time weekly hazard model + recovery regressor.
+"""Discrete-time weekly hazard model + default-day/recovery regressors.
 
 Provides per-row cumulative default probability by week, expected default day,
 and expected recovery rate. Powers Deliverable A NPV, Deliverable B CDR curves,
@@ -9,6 +9,11 @@ Time grid:
 - Default at day t* maps to bucket ceil(t*/7) in {1,..,13}.
 - Repaid loans (days_to_full_repayment = 60) are treated as non-defaulters across
   all 13 buckets, since the brief defines default events through day 90.
+
+The weekly hazard model is intentionally kept for Deliverable B's required
+cohort-age CDR grid. NPV uses a separate conditional default-day regressor so
+the cash-flow formula receives a day-level t* estimate rather than a week
+midpoint.
 """
 
 from __future__ import annotations
@@ -121,6 +126,49 @@ def fit_hazard_model(
     fit_kwargs = {"clf__sample_weight": weights} if weights is not None else {}
     pipe.fit(person_period[feature_cols], y, **fit_kwargs)
     return HazardModel(pipeline=pipe, feature_cols=feature_cols)
+
+
+@dataclass
+class DefaultDayModel:
+    pipeline: Pipeline | None
+    feature_cols: list[str]
+    fallback_day: float
+
+    def predict_day(self, feature_x: pd.DataFrame) -> np.ndarray:
+        if self.pipeline is None:
+            return np.full(len(feature_x), self.fallback_day, dtype=float)
+        x = feature_x[self.feature_cols]
+        pred = self.pipeline.predict(x)
+        return np.clip(pred, 1.0, 90.0)
+
+
+def fit_default_day_model(
+    feature_x: pd.DataFrame,
+    defaulted_rows: pd.DataFrame,
+) -> DefaultDayModel:
+    """Predict E[days_to_default | default, x] at day-level granularity."""
+    feature_cols = list(feature_x.columns)
+    target = defaulted_rows["days_to_default"].dropna().clip(1, 90).astype(float)
+    if len(target) < 200:
+        fallback = float(target.median()) if len(target) else 45.0
+        return DefaultDayModel(pipeline=None, feature_cols=feature_cols, fallback_day=fallback)
+
+    train_x = feature_x.loc[target.index, feature_cols]
+    reg = HistGradientBoostingRegressor(
+        max_iter=220,
+        learning_rate=0.05,
+        max_leaf_nodes=31,
+        l2_regularization=0.12,
+        min_samples_leaf=35,
+        random_state=31,
+    )
+    pipe = Pipeline([("reg", reg)])
+    pipe.fit(train_x, target.to_numpy())
+    return DefaultDayModel(
+        pipeline=pipe,
+        feature_cols=feature_cols,
+        fallback_day=float(target.median()),
+    )
 
 
 @dataclass

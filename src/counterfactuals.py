@@ -46,12 +46,15 @@ POLICY_DERIVED_FEATURES = {
     "prior_approved_amount",
 }
 RISK_INCREASING_FEATURES = {
+    "requested_amount",
     "aggregate_credit_utilization",
     "recent_inquiries_count_6mo",
     "existing_debt_obligations",
     "observed_overdraft_count_3mo",
     "invoice_payment_delinquency_rate",
     "multi_lender_inquiry_count_30d",
+    "observed_revenue_volatility",
+    "bookkeeping_recency_days",
     "prior_loans_default_count",
     "requested_amount_to_observed_revenue",
 }
@@ -60,10 +63,13 @@ RISK_DECREASING_FEATURES = {
     "payroll_regularity_score",
     "stated_annual_revenue",
     "observed_monthly_revenue_avg_3mo",
+    "observed_revenue_trend_3mo",
     "stated_time_in_business",
     "vintage_years",
     "account_age_days",
     "platform_active_months",
+    "days_since_last_external_decline",
+    "days_since_last_inquiry_elsewhere",
 }
 MONOTONIC_NEUTRALIZE_FEATURES = RISK_INCREASING_FEATURES | RISK_DECREASING_FEATURES
 CUSTOM_TREATMENTS = {
