@@ -18,11 +18,26 @@ TIED TO A. The trajectory is decomposed as
 90% bands are PREDICTIVE intervals for the realized cohort default fraction -- the
 quantity B is actually scored against -- combining THREE sources of uncertainty:
 the cohort mean PD, the timing curve G(t), and the binomial sampling spread of
-counting n_c approved-loan outcomes at that rate. The binomial layer is essential:
-without it the band is a confidence interval on the latent mean (shrinking like
-1/sqrt(n) to nothing) and under-covers the realized fraction badly. Monotonicity in
-age is then enforced by a per-cohort cummax on each band column (guards float jitter
-and the per-cell binomial noise), satisfying the validator's monotonicity gate.
+counting n_c approved-loan outcomes at that rate.
+
+CALIBRATION CAVEAT (added 2026-06-06 after an adversarial audit): the binomial layer
+is NECESSARY but NOT SUFFICIENT. It removes the 1/sqrt(n) collapse of a confidence-
+interval-on-the-mean, but the band is still CENTERED on PD_c, which equals A's mean
+predicted_pd. A's PD runs slightly LOW on the most recent vintage (temporal drift --
+see backtest.py, late calib gap ~ -0.02). So measured against labelled val the band
+covers only ~68% at the grader's n_c, with DIRECTIONAL high misses at the week-13
+asymptote (realized ~0.126 vs predicted ~0.110, +1.6pp, ~2 sd). The binomial layer is
+faithfully PROPAGATING a low-biased point estimate; it does not absorb that bias, and
+because variance is sized to n_c, the grader's LARGER n makes the band NARROWER (it
+cannot rescue a mis-centered band). OPEN ITEM to reach ~90% coverage: either re-center
+PD_c for drift upstream in A, or conformal-widen these bands on val. NOTE:
+scratch/diag_b_matched_n.py's "matched-n -> 93.5%, gap is an artifact" argument is
+WRONG -- matched-n only covers because the smaller n widens the band, which shows the
+band must be WIDER, not that the shipped one is calibrated.
+
+Monotonicity in age is then enforced by a per-cohort cummax on each band column (guards
+float jitter and the per-cell binomial noise), satisfying the validator's monotonicity
+gate.
 """
 from __future__ import annotations
 
