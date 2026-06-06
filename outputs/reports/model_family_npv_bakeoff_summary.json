@@ -1,0 +1,51 @@
+{
+  "best_by_validation_npv": {
+    "model": "lightgbm",
+    "feature_set": "no_prior_score",
+    "best_threshold_margin": 0.009380087912607058,
+    "validation_labeled_realized_npv": 3867998.4575711302,
+    "validation_labeled_approved": 2012,
+    "validation_labeled_approval_rate": 0.7887103096824775,
+    "validation_labeled_default_rate_approved": 0.07803180914512922,
+    "overlap_with_current_labeled_decisions": 0.9447275578204626,
+    "validation_all_approval_rate": 0.6776564936511472,
+    "test_approval_rate": 0.6763071339457866,
+    "approved_total": 9005,
+    "prior_declined_approved_total": 3104.0,
+    "prior_declined_approval_rate": 0.536004144361941,
+    "mean_validation_pd": 0.267319300295022,
+    "mean_test_pd": 0.27156137678852427,
+    "auroc": 0.7441872036802328,
+    "log_loss": 0.43641499784939347,
+    "brier": 0.13688934914451764,
+    "mean_pd": 0.20925656044758084,
+    "actual_default_rate": 0.2061936495491964,
+    "note": NaN
+  },
+  "active_submission": {
+    "model": "active_submission_direct_npv_blend",
+    "feature_set": "active_project",
+    "best_threshold_margin": NaN,
+    "validation_labeled_realized_npv": 3834516.5002022013,
+    "validation_labeled_approved": 2047,
+    "validation_labeled_approval_rate": 0.8024304194433556,
+    "validation_labeled_default_rate_approved": 0.08158280410356619,
+    "overlap_with_current_labeled_decisions": 1.0,
+    "validation_all_approval_rate": 0.6934729338382714,
+    "test_approval_rate": 0.6902574571849835,
+    "approved_total": 9199,
+    "prior_declined_approved_total": NaN,
+    "prior_declined_approval_rate": NaN,
+    "auroc": 0.7549791109233441,
+    "log_loss": 0.43064151974573134,
+    "brier": 0.13530076532735805,
+    "mean_pd": 0.21255452038895498,
+    "actual_default_rate": 0.2061936495491964,
+    "note": "actual current submitted decisions"
+  },
+  "caveats": [
+    "Thresholds are selected on labeled validation rows, so the top row is an optimization lead rather than proof of test performance.",
+    "Prior-declined applicants still have no observed outcomes; reject-region funding should be defended with sensitivity analysis.",
+    "The active submission was promoted with scripts/apply_lightgbm_no_prior_policy.py."
+  ]
+}

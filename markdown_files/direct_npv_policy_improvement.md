@@ -22,7 +22,13 @@ features -> E[realized NPV per dollar | x]
 
 without using outcome columns as features.
 
-## Active Policy
+## Previous Active Policy
+
+Active model label:
+
+```text
+Calibrated HGB/logistic PD + hazard/recovery + direct-NPV blend
+```
 
 Current active decision score:
 
@@ -54,6 +60,58 @@ validation approval:  69.35%
 test approval:        69.03%
 ```
 
+## Model-Family Bakeoff Update
+
+After reconciling the DAG/tricks memo, I added a policy-level bakeoff for HGB, LightGBM, and CatBoost:
+
+```text
+scripts/experiment_model_family_npv_bakeoff.py
+```
+
+Unlike the earlier raw-score experiment, this evaluates each model by:
+
+```text
+calibrated PD -> expected NPV using timing/recovery curves -> approval policy -> labeled-validation realized NPV
+```
+
+Top results:
+
+```text
+LightGBM + no_prior_score: $3.868M labeled-validation NPV
+HGB + no_prior_score:      $3.835M labeled-validation NPV
+active direct-NPV blend:   $3.835M labeled-validation NPV
+CatBoost + no_prior_score: $3.781M labeled-validation NPV
+```
+
+The strongest challenger is LightGBM without prior-underwriter score/proxy features. The lift over the active policy is small, so this is a serious candidate but not an automatic replacement without a reject-region sensitivity audit.
+
+## Promoted Policy
+
+The active submission has now been promoted to:
+
+```text
+LightGBM + no_prior_score -> expected NPV via timing/recovery curves -> threshold 0.009380
+```
+
+Promotion script:
+
+```text
+scripts/apply_lightgbm_no_prior_policy.py
+```
+
+Current active A/B results:
+
+```text
+labeled-validation NPV:  $3.868M
+approved total:          9,005 / 13,306
+validation approval:     67.77%
+test approval:           67.63%
+prior-declined funded:   3,104
+PD interval coverage:    0.90 bin-level coverage on labeled validation
+```
+
+The NPV lift over the previous direct-NPV blend is about `$33K`; the lift over the decomposed NPV-only policy is about `$79K`.
+
 ## Why This Is A Reasonable Move
 
 The challenge was designed to penalize brute-force classification. A direct value model is aligned with the actual scoring target:
@@ -79,5 +137,6 @@ outputs/reports/direct_npv_policy_experiment.csv
 outputs/reports/direct_npv_model_diagnostics.csv
 outputs/reports/direct_npv_policy_summary.json
 outputs/reports/direct_npv_blend_active_policy_summary.json
+outputs/reports/model_family_npv_bakeoff.csv
+outputs/reports/model_family_npv_bakeoff_summary.json
 ```
-

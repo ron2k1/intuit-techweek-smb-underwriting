@@ -18,6 +18,9 @@ artifacts/ground_truth/
 artifacts/runs/
 artifacts/
 
+# Local branch-comparison scratch checkouts
+comparison/
+
 # OS
 .DS_Store
 
