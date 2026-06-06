@@ -1,0 +1,36 @@
+{
+  "rows": 900,
+  "unique_applicants": 300,
+  "unique_features": 30,
+  "duplicate_applicant_feature_value_rows": 4,
+  "validation_labeled_only_causal_safe_model": {
+    "rows": 2551,
+    "default_rate": 0.2061936495491964,
+    "auroc": 0.7556043749706614,
+    "average_precision": 0.5154170395977318,
+    "log_loss": 0.430169103593596,
+    "brier": 0.13512570163654353,
+    "ece_10bin": 0.021120154951765925
+  },
+  "calibration_holdout_interval_coverage_proxy": {
+    "n": 10345,
+    "bin_coverage": 1.0,
+    "n_bins": 10,
+    "mean_width": 0.07532987081926595,
+    "median_width": 0.05259870713980158
+  },
+  "mean_predicted_pd_cf": 0.2931845757884327,
+  "mean_interval_width": 0.10269929875620233,
+  "outside_min_max_queries": 0,
+  "outside_p01_p99_queries": 74,
+  "unseen_category_queries": 0,
+  "historical_or_proxy_queries": 165,
+  "direct_intervention_queries": 726,
+  "excluded_prior_policy_tokens": [
+    "prior_underwriter",
+    "prior_decision",
+    "prior_approved",
+    "prior_score",
+    "selection_support"
+  ]
+}

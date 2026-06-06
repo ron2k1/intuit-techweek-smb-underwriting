@@ -8,6 +8,7 @@ Sources incorporated:
 
 ```text
 /Users/stevenyang/Downloads/hackathon-brief.pdf
+/Users/stevenyang/Documents/intuit-hackathon/hackathon_dag_and_dataset_tricks_analysis.md
 https://github.com/intuit/intuit-techweek-nyc-hackathon-2026
 repo files: README.md, dataset/README.md, data_dictionary.csv, validate_submission.py,
 intervention_queries.csv, cohort_week_definitions.csv, submission_B_template.csv,
@@ -40,6 +41,10 @@ These gaps were found or were under-emphasized in the project notes, then patche
 6. Submission validation needed to be treated as a hard disqualification gate.
    Added exact filenames, flat-folder rule, row counts, interval-order checks,
    ID coverage, and non-decreasing B trajectories.
+
+7. The DAG/tricks memo needed to be reconciled with implementation evidence.
+   Added an NPV-policy bakeoff for HGB, LightGBM, and CatBoost; clarified LGD
+   conventions; and updated the prior-underwriter/reject-region strategy.
 ```
 
 ## Updated files
@@ -62,6 +67,23 @@ hackathon_metrics_libraries_techniques.md
 
 codex_prompts_for_winning_hackathon_strategy.md
   Rewritten as concrete Codex implementation prompts for this exact repo and dataset contract.
+
+dag_reconciliation_and_model_family_bakeoff.md
+  Reconciles the DAG/tricks memo with current implementation, documents exact LGD
+  assumptions, and reports the HGB/LightGBM/CatBoost NPV-policy bakeoff.
+
+hackathon_scoring_dashboard.md
+  Score-weighted operating dashboard that maps progress, model diagnostics, and
+  hackathon performance to S_P&L, S_traj, S_cal, S_C, and S_write.
+
+direct_npv_policy_improvement.md
+  Updated with model-family bakeoff results and the LightGBM/no-prior-score challenger.
+
+npv_consistency_audit.md
+  Updated to distinguish brief-formula implied LGD from the simplified LGD=0.30 shorthand.
+
+causal_trap_and_middle_trick_analysis.md
+  Updated with prior-underwriter ablation evidence from the model-family bakeoff.
 ```
 
 ## Recommended read order
@@ -73,6 +95,8 @@ codex_prompts_for_winning_hackathon_strategy.md
 4. hackathon_relevant_technical_concepts.md
 5. hackathon_metrics_libraries_techniques.md
 6. codex_prompts_for_winning_hackathon_strategy.md
+7. dag_reconciliation_and_model_family_bakeoff.md
+8. hackathon_scoring_dashboard.md
 ```
 
 ## Immediate next command locally

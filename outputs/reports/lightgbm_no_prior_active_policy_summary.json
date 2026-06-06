@@ -1,0 +1,28 @@
+{
+  "policy": "lightgbm_no_prior_score",
+  "threshold": 0.009380087912607058,
+  "validation_labeled_realized_npv": 3867998.4575711302,
+  "validation_labeled_approved": 2012,
+  "validation_labeled_approval_rate": 0.7887103096824775,
+  "validation_labeled_default_rate_approved": 0.07803180914512922,
+  "validation_all_approval_rate": 0.6776564936511472,
+  "test_approval_rate": 0.6763071339457866,
+  "approved_total": 9005,
+  "prior_declined_approved_total": 3104,
+  "validation_pd_metrics": {
+    "auroc": 0.7441872036802328,
+    "log_loss": 0.43641499784939347,
+    "brier": 0.13688934914451764,
+    "mean_pd": 0.20925656044758084,
+    "actual_default_rate": 0.2061936495491964
+  },
+  "validation_interval_coverage_90": {
+    "n": 2551,
+    "bin_coverage": 0.9,
+    "n_bins": 10,
+    "mean_width": 0.11830596848327864,
+    "median_width": 0.12
+  },
+  "pd_interval_half_width_floor": 0.06,
+  "replaced_policy_note": "Promoted from model-family NPV bakeoff; threshold selected on labeled validation."
+}

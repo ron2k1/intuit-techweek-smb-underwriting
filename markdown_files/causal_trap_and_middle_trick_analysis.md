@@ -150,6 +150,15 @@ Use it for diagnostics, reweighting, or calibration strata.
 
 4. Keep `prior_underwriter_score` as a benchmark/proxy feature, but run ablations without it.
 
+The model-family NPV bakeoff now supports this ablation. The best challenger was `LightGBM + no_prior_score`, which removed `prior_underwriter_score` and derived score proxies:
+
+```text
+LightGBM + no_prior_score labeled-validation NPV: $3.868M
+active direct-NPV blend labeled-validation NPV:   $3.835M
+```
+
+This does not prove LightGBM will win on test, but it shows that reducing dependence on prior-underwriter score can improve the NPV policy while making the reject-region story cleaner. The LightGBM/no-prior-score policy has now been promoted to active A/B because it lifts labeled-validation NPV from `$3.835M` to `$3.868M`; the writeup should still disclose that the funded prior-declined region is not directly labeled.
+
 5. Add missing indicators for bank-feed fields because missingness is structural through `has_linked_bank_feed`.
 
 6. For counterfactual C, set the queried feature and recompute deterministic downstream features where appropriate. The main example is:
@@ -161,4 +170,3 @@ requested_amount_to_observed_revenue
 when `requested_amount` or observed revenue changes.
 
 7. For Deliverable B, model default timing separately from PD. A large day-90 default mass suggests a distinct terminal default mechanism from the positive-balance-at-day-90 rule.
-

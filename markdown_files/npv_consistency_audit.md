@@ -67,6 +67,26 @@ F = 0.03 * R
 D = R * (1 + r*T/365) / T
 ```
 
+## LGD Clarification
+
+The active project should not be described as using one fixed LGD threshold. The decision path uses the brief cash-flow equation above, so default loss varies by default day and recovery.
+
+Observed-default diagnostics:
+
+```text
+train defaults:
+  brief-formula implied LGD mean   ~= 0.137
+  brief-formula implied LGD median ~= 0.241
+  simpler amortizing LGD mean      ~= 0.238
+
+validation defaults:
+  brief-formula implied LGD mean   ~= 0.148
+  brief-formula implied LGD median ~= 0.236
+  simpler amortizing LGD mean      ~= 0.241
+```
+
+The teammate table's `LGD = 0.30` is a conservative shorthand for the amortization-aware approach. The actual planted trap is `LGD ~= 0.91`, which comes from anchoring on final post-default recovery and ignoring daily draws before default.
+
 ## Guardrail
 
 Run this after regenerating A or B:
