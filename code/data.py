@@ -104,6 +104,10 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         df['prior_loans_default_count'], df['prior_loans_count']
     )
 
+    for col in CAT_FEATURE_NAMES:
+        if col in df.columns:
+            df[col] = df[col].fillna('missing')
+
     return df
 
 
