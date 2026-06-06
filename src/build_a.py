@@ -5,13 +5,15 @@ Run:  python -m src.build_a   ->  submissions/submission_A_decisions.csv (13,306
 The objective the team agreed on:
   * MODEL QUALITY is measured by AUC-ROC (rank discrimination) -- the spine's
     booster early-stops on roc_auc and we report AUC as the headline metric.
-  * THE DECISION maximizes realized PORTFOLIO VALUE / NPV -- we approve every
-    applicant whose calibrated PD is below the CLOSED-FORM profit break-even
-    threshold GOOD_MARGIN/(GOOD_MARGIN+LGD) under the SCORED economics (LGD=0.30).
-    We deliberately do NOT use the val-argmax tau: the walk-forward backtest
-    (src/backtest.py) showed it is OVERFIT (swings 0.135-0.229 across folds), and
-    once PDs are de-drifted it climbs back to the break-even anyway. (AUC ranks;
-    the closed-form break-even sets the cut.)
+  * THE DECISION maximizes realized PORTFOLIO VALUE / NPV -- we approve an applicant
+    whose calibrated PD is below the CLOSED-FORM profit break-even threshold
+    GOOD_MARGIN/(GOOD_MARGIN+LGD) under the SCORED economics (LGD=0.30). In the
+    never-labelled reject region (OOD) the PD is an extrapolation, so there we
+    require the PESSIMISTIC conformal upper-90 PD to clear break-even (trust-but-
+    verify, step 4). We deliberately do NOT use the val-argmax tau: the walk-forward
+    backtest (src/backtest.py) showed it is OVERFIT (swings 0.135-0.229 across
+    folds), and once PDs are de-drifted it climbs back to the break-even anyway.
+    (AUC ranks; the closed-form break-even sets the cut.)
 
 Pipeline (each step traces to reports/audit_findings.md):
   1. Feature set = shared predictors MINUS prior_* (the selection collider:
@@ -25,8 +27,14 @@ Pipeline (each step traces to reports/audit_findings.md):
      make different ranking errors, so the blend lifts AUC.
   3. Uncertainty: bootstrap-ensemble spread -> conformal-calibrated half-width,
      EXPLICITLY widened in the never-labelled reject region (declined / no feed).
-  4. Decision: closed-form break-even PD (drift-robust); the overfit val argmax is
-     still computed and printed as a comparison, never as the decision.
+  4. Decision (TRUST-BUT-VERIFY): in-distribution applicants are approved when the
+     point PD clears the closed-form break-even; OOD applicants (prior-declined /
+     no-feed, where the PD is an extrapolation) must clear it on the PESSIMISTIC
+     conformal upper-90 bound instead. This funds the censored region only where
+     even our uncertainty-aware estimate says it pays -- capturing the verifiable
+     declined-region profit (realized default 0.144 << break-even) while abstaining
+     on the unverifiable deep-reject tail the data cannot vouch for. The overfit val
+     argmax is still computed and printed as a comparison, never as the decision.
   5. One row per val+test applicant, ordered to expected_ids/.
 """
 from __future__ import annotations
@@ -277,11 +285,15 @@ def main() -> None:
     npv_va = realized_npv(amt_va, yva.to_numpy(), dd_va)   # timing-aware NPV, LGD=0.30
     profit_va = realized_profit(amt_va, yva.to_numpy())    # undiscounted S_P&L
 
-    # DECISION = the closed-form break-even PD (drift-robust). NOT 0.5 (that funds
-    # ~everyone) and NOT the val argmax: the backtest showed the argmax swings
-    # 0.135-0.229 across folds and, on de-drifted PDs, climbs back to this break-even
-    # anyway. We still compute the argmax to PRINT its in-sample (overfit) edge.
+    # DECISION = closed-form break-even PD (drift-robust), applied TRUST-BUT-VERIFY:
+    # in-distribution rows are judged on the point PD; OOD rows (extrapolated) must
+    # clear break-even on the PESSIMISTIC conformal upper-90 bound. NOT 0.5 (funds
+    # ~everyone) and NOT the val argmax (overfit; swings 0.135-0.229 across folds and
+    # climbs back to break-even on de-drifted PDs). We still compute the argmax to
+    # PRINT its in-sample (overfit) edge.
     tau = theoretical_tau()                    # closed-form break-even -- THE cut (~0.226)
+    dpd_va = np.where(ood_va == 1.0, hi_va, pd_va)   # OOD -> decide on upper-90 bound
+    dpd_te = np.where(ood_te == 1.0, hi_te, pd_te)
     cands = np.unique(np.round(pd_va[lab_va], 4))
     tau_arg, best = float(cands[-1]) + 1e-6, -np.inf
     for tc in cands:
@@ -289,15 +301,15 @@ def main() -> None:
         if tot > best:
             best, tau_arg = tot, float(tc)
 
-    appr = lab_va & (pd_va < tau)
+    appr = lab_va & (dpd_va < tau)             # trust-but-verify approvals on labelled val
     appr_arg = lab_va & (pd_va < tau_arg)
     npv_cut, npv_all = np.nansum(npv_va[appr]), np.nansum(npv_va[lab_va])
     npv_arg = np.nansum(npv_va[appr_arg])
     pl_cut, funded = np.nansum(profit_va[appr]), np.nansum(amt_va[appr])
     print(f"[4] LGD={LGD:.2f} (recover {RECOVERY_RATE:.0%}; empirical train recovery={emp_recovery:.3f}=trap)  "
           f"discount={DISCOUNT_RATE_ANNUAL:.0%}/yr  default-day med={np.median(default_dd):.0f}")
-    print(f"    DECISION tau=break-even={tau:.4f} approve(val)={appr.sum()/lab_va.sum():.3f}  "
-          f"vs OVERFIT argmax={tau_arg:.4f} approve={appr_arg.sum()/lab_va.sum():.3f}")
+    print(f"    DECISION trust-but-verify @ break-even={tau:.4f} approve(val)={appr.sum()/lab_va.sum():.3f}  "
+          f"(OOD judged on upper-90)  vs OVERFIT argmax={tau_arg:.4f} approve={appr_arg.sum()/lab_va.sum():.3f}")
     print(f"    [labelled val] NPV @break-even=${npv_cut:,.0f}  @argmax=${npv_arg:,.0f} "
           f"(argmax in-sample edge ${npv_arg-npv_cut:,.0f})  approve-all ${npv_all:,.0f}  "
           f"P&L@cut=${pl_cut:,.0f}  NPV-margin={npv_cut / funded:.2%}")
@@ -308,12 +320,13 @@ def main() -> None:
         "predicted_pd": np.clip(np.concatenate([pd_va, pd_te]), 0.0, 1.0),
         "pd_lower_90": np.concatenate([lo_va, lo_te]),
         "pd_upper_90": np.concatenate([hi_va, hi_te]),
+        "_decision_pd": np.concatenate([dpd_va, dpd_te]),   # point PD (ID) or upper-90 (OOD)
     })
-    out["decision"] = (out["predicted_pd"] < tau).astype(int)
     order = pd.read_csv(EXPECTED_IDS, header=None)[0].astype(str).tolist()
     out = out.set_index(out["applicant_id"].astype(str)).reindex(order).reset_index(drop=True)
     out["applicant_id"] = order
     assert not out.isna().any().any(), "row/ID mismatch vs expected_ids"
+    out["decision"] = (out["_decision_pd"] < tau).astype(int)   # trust-but-verify cut
     out = out[["applicant_id", "decision", "predicted_pd", "pd_lower_90", "pd_upper_90"]]
 
     dest = SUB_DIR / "submission_A_decisions.csv"
@@ -327,9 +340,10 @@ def main() -> None:
     # x the train default-timing distribution. Reported in $ / margin% / per-loan so
     # the number is comparable however the metric is normalized.
     pd_cat = np.concatenate([pd_va, pd_te])
+    dpd_cat = np.concatenate([dpd_va, dpd_te])   # decision PD (OOD on upper-90)
     amt_cat = np.concatenate([amt_va, te["requested_amount"].to_numpy()])
-    enpv = amt_cat * expected_npv_per_dollar(pd_cat, default_dd)
-    appr_cat = pd_cat < tau
+    enpv = amt_cat * expected_npv_per_dollar(pd_cat, default_dd)   # value at POINT PD
+    appr_cat = dpd_cat < tau                      # but GATE trust-but-verify
     e_total, funded_all = float(enpv[appr_cat].sum()), float(amt_cat[appr_cat].sum())
     n_appr = int(appr_cat.sum())
     print(f"[5b] EXPECTED NPV (approved val+test): ${e_total:,.0f}  "
