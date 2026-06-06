@@ -15,8 +15,7 @@ The active package keeps the calibrated PD model and replaces only the A decisio
 | Labeled-validation realized NPV, capped | $2.712M |
 | Headline expected NPV, capped | $14.045M |
 | Prior-declined expected NPV, capped | $3.753M |
-| Prior-declined expected NPV under 3x stress, capped | $2.731M |
-| Prior-declined expected NPV under 6x stress, capped | $1.778M |
+| Prior-declined expected NPV under 3x stress, capped | $2.265M |
 
 ## PD Metrics
 

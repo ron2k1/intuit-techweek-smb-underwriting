@@ -1,16 +1,22 @@
 {
-  "model": "compact_risk_factor_lightgbm_plus_guarded_capped_cash_flow_npv_policy",
+  "model": "capped_feature_regime_npv_ensemble_plus_calibrated_pd_policy",
   "policy": {
-    "threshold": 0.012499999999999997,
-    "prior_declined_default_odds_stress_gamma": 3.0,
-    "approved_total": 7973,
-    "approval_rate": 0.5992033669021494,
-    "prior_declined_approved_total": 2145,
-    "validation_labeled_realized_npv": 2652215.1131467815,
-    "headline_expected_npv": 14706219.845620511,
-    "prior_declined_expected_npv": 4190378.6582722813,
-    "prior_declined_expected_npv_gamma_3x": 2958515.2614427544,
-    "prior_declined_expected_npv_gamma_6x": 1824555.658677781
+    "decision_layer": "capped_feature_revenue_trend_future_like",
+    "regime_feature": "observed_revenue_trend_3mo",
+    "future_like_rule": "missing or < -0.20",
+    "threshold": 0.0,
+    "prior_declined_score_floor": 0.03,
+    "approved_total": 7571,
+    "approval_rate": 0.5689914324364949,
+    "validation_approval_rate": 0.569169079973268,
+    "test_approval_rate": 0.5689009867301803,
+    "prior_declined_approved_total": 1937,
+    "prior_declined_approval_rate": 0.33448454498359526,
+    "validation_labeled_approved": 1918,
+    "validation_labeled_realized_npv": 2711813.9989971323,
+    "headline_expected_npv": 14044601.726382181,
+    "prior_declined_expected_npv": 3753129.7773538227,
+    "prior_declined_expected_npv_gamma_3x": 2265183.0438362616
   },
   "pd_metrics": {
     "validation_auroc": 0.7404036990095291,
@@ -18,17 +24,23 @@
     "validation_brier": 0.13762517102949567,
     "validation_mean_pd": 0.21026723178913037,
     "validation_actual_default_rate": 0.2061936495491964,
-    "interval_bin_coverage": 1.0
+    "interval_bin_coverage": 1.0,
+    "mean_pd_approved_all": 0.11926509310924378,
+    "labeled_validation_default_rate_approved": 0.1261730969760167
   },
   "trajectory_metrics": {
-    "mean_abs_cdr_error": 0.011055659864396859,
-    "week13_mean_actual_cdr": 0.12922819640262184,
-    "week13_mean_predicted_cdr": 0.1251258722618607,
-    "interval_coverage": 0.9526627218934911,
-    "mean_interval_width": 0.06153031177822105
+    "n_labeled_approved_under_current_policy": 1918,
+    "mean_abs_cdr_error": 0.006160467954263938,
+    "week13_mean_actual_cdr": 0.12548319509849176,
+    "week13_mean_predicted_cdr": 0.12533058215748152,
+    "interval_coverage": 1.0,
+    "mean_interval_width": 0.055599089983891264,
+    "median_interval_width": 0.05964208923648211,
+    "worst_abs_cdr_error": 0.026669444340953072
   },
   "counterfactual_metrics": {
     "rows": 900,
+    "unique_applicants": 300,
     "unique_features": 30,
     "causal_safe_feature_count": 106,
     "outside_p01_p99_queries": 74,
@@ -42,6 +54,7 @@
     "validator_errors": 0,
     "validator_warnings": 0,
     "writeup_pdf_present": true,
+    "writeup_pages": 4,
     "team_name": "Global Intuit Hackers"
   }
 }
