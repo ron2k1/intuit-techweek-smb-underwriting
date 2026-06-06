@@ -15,9 +15,14 @@ TIED TO A. The trajectory is decomposed as
             occurred by loan age t weeks. Non-decreasing, G(13)=1. It carries the
             structural day-90 step (flat weeks 10-12, jump at week 13).
 
-90% bands are bootstrapped over BOTH sources of uncertainty (the cohort mean PD
-and the timing curve). Because every bootstrap path is monotone in age, so are the
-percentile bands -- the validator's monotonicity gate is satisfied by construction.
+90% bands are PREDICTIVE intervals for the realized cohort default fraction -- the
+quantity B is actually scored against -- combining THREE sources of uncertainty:
+the cohort mean PD, the timing curve G(t), and the binomial sampling spread of
+counting n_c approved-loan outcomes at that rate. The binomial layer is essential:
+without it the band is a confidence interval on the latent mean (shrinking like
+1/sqrt(n) to nothing) and under-covers the realized fraction badly. Monotonicity in
+age is then enforced by a per-cohort cummax on each band column (guards float jitter
+and the per-cell binomial noise), satisfying the validator's monotonicity gate.
 """
 from __future__ import annotations
 
@@ -87,14 +92,22 @@ def main() -> None:
           f"{sorted(pd_by_cohort)}  global_mean_PD={global_mean:.4f}")
     for c in range(1, N_WEEKS + 1):
         vals = pd_by_cohort.get(c, np.array([global_mean]))
+        n_c = max(len(vals), 1)            # approved loans in cohort c == grader's denominator
         pd_c = float(vals.mean())
         # bootstrap PD_c (resample cohort applicants) x bootstrap G
         pd_boot = np.array([rng.choice(vals, size=len(vals), replace=True).mean()
                             for _ in range(N_BOOT)])
         for ti, t in enumerate(range(1, N_WEEKS + 1)):
             cdr = pd_c * G[ti]
-            reps = pd_boot * Gboot[:, ti]
-            lo, hi = np.percentile(reps, [5, 95])
+            # The SCORED quantity is the REALIZED default fraction of the approved
+            # cohort, not the latent mean rate. So the 90% band must be a PREDICTIVE
+            # interval: model/timing uncertainty (pd_boot x Gboot) PLUS the binomial
+            # sampling spread of counting n_c Bernoulli outcomes at that rate. Omitting
+            # the binomial layer collapses the band like 1/sqrt(n) and under-covers
+            # badly (a CI on the mean, not a PI on the realized count).
+            rate_reps = np.clip(pd_boot * Gboot[:, ti], 0.0, 1.0)
+            realized_reps = rng.binomial(n_c, rate_reps) / n_c
+            lo, hi = np.percentile(realized_reps, [5, 95])
             rows.append((c, t,
                          np.clip(cdr, 0, 1),
                          np.clip(min(lo, cdr), 0, 1),
