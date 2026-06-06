@@ -20,20 +20,25 @@ quantity B is actually scored against -- combining THREE sources of uncertainty:
 the cohort mean PD, the timing curve G(t), and the binomial sampling spread of
 counting n_c approved-loan outcomes at that rate.
 
-CALIBRATION CAVEAT (added 2026-06-06 after an adversarial audit): the binomial layer
-is NECESSARY but NOT SUFFICIENT. It removes the 1/sqrt(n) collapse of a confidence-
-interval-on-the-mean, but the band is still CENTERED on PD_c, which equals A's mean
-predicted_pd. A's PD runs slightly LOW on the most recent vintage (temporal drift --
-see backtest.py, late calib gap ~ -0.02). So measured against labelled val the band
-covers only ~68% at the grader's n_c, with DIRECTIONAL high misses at the week-13
-asymptote (realized ~0.126 vs predicted ~0.110, +1.6pp, ~2 sd). The binomial layer is
-faithfully PROPAGATING a low-biased point estimate; it does not absorb that bias, and
-because variance is sized to n_c, the grader's LARGER n makes the band NARROWER (it
-cannot rescue a mis-centered band). OPEN ITEM to reach ~90% coverage: either re-center
-PD_c for drift upstream in A, or conformal-widen these bands on val. NOTE:
-scratch/diag_b_matched_n.py's "matched-n -> 93.5%, gap is an artifact" argument is
-WRONG -- matched-n only covers because the smaller n widens the band, which shows the
-band must be WIDER, not that the shipped one is calibrated.
+CALIBRATION (audited + fixed 2026-06-06). The binomial layer is NECESSARY but not
+SUFFICIENT: it removes the 1/sqrt(n) collapse of a confidence-interval-on-the-mean, but
+the percentile band is still CENTERED on PD_c (= A's mean predicted_pd), which runs
+slightly LOW on the most recent vintage (temporal drift -- see backtest.py, late calib
+gap ~ -0.02). Un-buffered, the band covered only ~68% at the grader's n_c with
+DIRECTIONAL high misses at the week-13 asymptote (realized ~0.126 vs predicted ~0.110,
++1.6pp, ~2 sd) -- the binomial layer faithfully PROPAGATES the low-biased point estimate
+but cannot absorb it, and because variance is sized to n_c the grader's LARGER n makes
+the band NARROWER, not safer.
+FIX (the conformal-widen route, NOT the re-center route): a flat +/-INTERVAL_BUFFER is
+added to each side after the binomial percentile, lifting coverage to ~91% and cutting
+mean Winkler ~18% on labelled val (sweep + adversarial re-score, see
+scratch/verify_lever_recenter_widen.py). Re-centering PD_c was deliberately REJECTED --
+shifting a too-narrow band only trades high-misses for low-misses (recenter-only made
+Winkler WORSE) and would be fit to the same asymptote it is scored on; the band was too
+NARROW, not mis-centered. The point estimate cumulative_default_rate is UNCHANGED; only
+the band widens. (This also retires scratch/diag_b_matched_n.py's "matched-n -> 93.5%,
+artifact" verdict, which was WRONG: matched-n covered only because the smaller n widened
+the band -- which is exactly why a flat additive widen is the correct fix.)
 
 Monotonicity in age is then enforced by a per-cohort cummax on each band column (guards
 float jitter and the per-cell binomial noise), satisfying the validator's monotonicity
@@ -53,6 +58,16 @@ SUB = REPO_ROOT / "submissions"
 N_WEEKS = D.N_COHORT_WEEKS          # 13
 N_BOOT = 500
 SEED = 20260605
+
+# Flat additive buffer added to EACH side of the 90% band, AFTER the binomial
+# percentile. See the CALIBRATION section in this module's docstring: the shipped band
+# was too NARROW (~68% coverage at the grader's n_c), and Winkler = width + (2/alpha) *
+# miss makes the 20x miss term dominate on ~1/3 of cells. An adversarial sweep + re-score
+# (scratch/verify_lever_recenter_widen.py) put the Winkler optimum at 0.010-0.012; 0.011
+# lifts coverage to ~91% and cuts mean Winkler ~18%. We intentionally do NOT match
+# steven's coarser 0.015 (slightly over-widens) and do NOT re-center PD_c (recenter-only
+# made Winkler WORSE -- the band was narrow, not mis-centered).
+INTERVAL_BUFFER = 0.011
 
 
 def timing_curve(tr: pd.DataFrame, ytr: pd.Series) -> tuple[np.ndarray, np.ndarray]:
@@ -123,10 +138,14 @@ def main() -> None:
             rate_reps = np.clip(pd_boot * Gboot[:, ti], 0.0, 1.0)
             realized_reps = rng.binomial(n_c, rate_reps) / n_c
             lo, hi = np.percentile(realized_reps, [5, 95])
+            # widen-only: flat +/-INTERVAL_BUFFER on each side (see module docstring).
+            # The point estimate cdr is untouched; min()/max() keep lo<=cdr<=hi, and the
+            # symmetric buffer only strengthens that, so the per-cohort cummax below
+            # preserves lower<=point<=upper (cummax of a dominated series stays dominated).
             rows.append((c, t,
                          np.clip(cdr, 0, 1),
-                         np.clip(min(lo, cdr), 0, 1),
-                         np.clip(max(hi, cdr), 0, 1)))
+                         np.clip(min(lo, cdr) - INTERVAL_BUFFER, 0, 1),
+                         np.clip(max(hi, cdr) + INTERVAL_BUFFER, 0, 1)))
 
     b = pd.DataFrame(rows, columns=["cohort_week", "loan_age_weeks",
                                     "cumulative_default_rate", "cdr_lower_90", "cdr_upper_90"])
