@@ -6,22 +6,27 @@ The objective the team agreed on:
   * MODEL QUALITY is measured by AUC-ROC (rank discrimination) -- the spine's
     booster early-stops on roc_auc and we report AUC as the headline metric.
   * THE DECISION maximizes realized PORTFOLIO VALUE / NPV -- we approve every
-    applicant whose calibrated PD is below the profit break-even threshold, where
-    the threshold is chosen to maximize realized NPV on the labelled validation
-    book under the SCORED loan economics (LGD = 0.30). (AUC ranks; NPV sets the cut.)
+    applicant whose calibrated PD is below the CLOSED-FORM profit break-even
+    threshold GOOD_MARGIN/(GOOD_MARGIN+LGD) under the SCORED economics (LGD=0.30).
+    We deliberately do NOT use the val-argmax tau: the walk-forward backtest
+    (src/backtest.py) showed it is OVERFIT (swings 0.135-0.229 across folds), and
+    once PDs are de-drifted it climbs back to the break-even anyway. (AUC ranks;
+    the closed-form break-even sets the cut.)
 
 Pipeline (each step traces to reports/audit_findings.md):
   1. Feature set = shared predictors MINUS prior_* (the selection collider:
      prior_decision is constant==1 on the labelled book; prior_underwriter_score
      is truncated above its cut for approvals and out-of-range for declines, so
      keeping it just forces extrapolation into the reject region we must price).
-  2. predicted_pd = average of a calibrated HGB and a logistic scorecard. Both are
+  2. predicted_pd = average of a calibrated HGB and a logistic scorecard, both fit
+     with RECENCY (time-decay) weights so the calibrated level tracks the recent,
+     higher-default regime the backtest found drifting up (15.2% -> 21.1%). Both are
      genuine probabilities (so the mean stays ~calibrated for the profit math) but
      make different ranking errors, so the blend lifts AUC.
   3. Uncertainty: bootstrap-ensemble spread -> conformal-calibrated half-width,
      EXPLICITLY widened in the never-labelled reject region (declined / no feed).
-  4. Decision: NPV break-even threshold (empirical argmax on the labelled val
-     book), cross-checked against the closed-form break-even PD.
+  4. Decision: closed-form break-even PD (drift-robust); the overfit val argmax is
+     still computed and printed as a comparison, never as the decision.
   5. One row per val+test applicant, ordered to expected_ids/.
 """
 from __future__ import annotations
@@ -72,12 +77,37 @@ N_ENSEMBLE = 12
 OOD_SCORE_CUT = 0.273     # prior_underwriter_score below this = never-labelled region
 SEED = M.DEFAULT_SEED
 
+# --- drift-aware calibration (walk-forward finding) -------------------------
+# Train default rate climbs monotonically 15.2% (2024Q1) -> 21.1% (2025Q2); the
+# deployment cohort sits past the peak, so a model fit on the full-history average
+# UNDER-prices risk (backtest: late-fold PD biased low by ~0.022). We time-decay the
+# training rows (exp half-life) so the calibrated LEVEL tracks the recent regime.
+# 6mo halves the calibration gap (-0.022 -> -0.015) at ~0 AUC cost and keeps the
+# effective sample healthy (~22k of 52k). Ranking is untouched; only the level moves.
+RECENCY_HALF_LIFE_MONTHS = 6.0
+
 # Feature set for A: drop the prior-lender selection collider (see docstring).
 DROP_FOR_A = ["prior_underwriter_score", "prior_decision"]
 
 
 def feats_for_a(feats: list[str]) -> list[str]:
     return [c for c in feats if c not in DROP_FOR_A]
+
+
+def recency_weights(ts: pd.Series,
+                    half_life_months: float = RECENCY_HALF_LIFE_MONTHS) -> np.ndarray:
+    """Exponential time-decay sample weights for drift-aware calibration.
+
+    The latest labelled train month gets weight 1.0; a row `half_life_months` earlier
+    gets 0.5, twice that 0.25, and so on. Down-weighting stale (lower-default) vintages
+    pulls the calibrated PD level toward the recent regime WITHOUT discarding history
+    (every row keeps a positive weight), so the booster still sees the full support and
+    its ranking is preserved -- only the probability level is corrected.
+    """
+    mon = pd.to_datetime(ts, errors="coerce").dt.to_period("M")
+    latest = mon.max()
+    months_back = np.array([(latest - m).n if pd.notna(m) else 0.0 for m in mon], float)
+    return 0.5 ** (months_back / half_life_months)
 
 
 def logit_pipe() -> "make_pipeline":
@@ -200,12 +230,15 @@ def main() -> None:
     Xva = D.to_model_matrix(va, feats).to_numpy()
     Xte = D.to_model_matrix(te, feats).to_numpy()
     Xtr_l, ytr_l = Xtr[lab], ytr[lab].astype(int).to_numpy()
+    w_tr = recency_weights(tr["application_timestamp"][lab])   # drift-aware time decay
     print(f"[1] labelled train={len(ytr_l)}  features={len(feats)} (dropped {DROP_FOR_A})  "
-          f"cat_idx={cat_idx}  base default={ytr_l.mean():.4f}")
+          f"cat_idx={cat_idx}  base default={ytr_l.mean():.4f}  "
+          f"recency half-life={RECENCY_HALF_LIFE_MONTHS:.0f}mo (eff N={w_tr.sum():.0f})")
 
-    # --- 2. predicted_pd = blend(calibrated HGB, logistic scorecard) ---
-    hgb = M.fit_calibrated(Xtr_l, ytr_l, cat_idx, seed=SEED, cv=5, scoring="roc_auc")
-    lg = logit_pipe().fit(Xtr_l, ytr_l)
+    # --- 2. predicted_pd = blend(calibrated HGB, logistic scorecard), recency-weighted ---
+    hgb = M.fit_calibrated(Xtr_l, ytr_l, cat_idx, seed=SEED, cv=5, scoring="roc_auc",
+                           sample_weight=w_tr)
+    lg = logit_pipe().fit(Xtr_l, ytr_l, logisticregression__sample_weight=w_tr)
     pd_hgb_va, pd_hgb_te = hgb.predict_proba(Xva)[:, 1], hgb.predict_proba(Xte)[:, 1]
     pd_lg_va, pd_lg_te = lg.predict_proba(Xva)[:, 1], lg.predict_proba(Xte)[:, 1]
     pd_va = 0.5 * (pd_hgb_va + pd_lg_va)
@@ -225,7 +258,7 @@ def main() -> None:
 
     # --- 3. bootstrap spread -> conformal interval (widened OOD) ---
     ens = M.bootstrap_pd(Xtr_l, ytr_l, [Xva, Xte], cat_idx, seed=SEED,
-                         n_models=N_ENSEMBLE, scoring="roc_auc")
+                         n_models=N_ENSEMBLE, scoring="roc_auc", sample_weight=w_tr)
     std_va, std_te = ens[0].std(0), ens[1].std(0)
     lam = M.conformal_lambda(pd_va[lab_va], std_va[lab_va], yv)
     ood_va, ood_te = ood_flag(va), ood_flag(te)
@@ -244,25 +277,30 @@ def main() -> None:
     npv_va = realized_npv(amt_va, yva.to_numpy(), dd_va)   # timing-aware NPV, LGD=0.30
     profit_va = realized_profit(amt_va, yva.to_numpy())    # undiscounted S_P&L
 
-    # Approve below the PD that MAXIMIZES realized portfolio NPV on the labelled
-    # book. NOT 0.5 -- a 0.5 cut funds ~everyone; with LGD=0.30 the break-even is ~22.6%.
+    # DECISION = the closed-form break-even PD (drift-robust). NOT 0.5 (that funds
+    # ~everyone) and NOT the val argmax: the backtest showed the argmax swings
+    # 0.135-0.229 across folds and, on de-drifted PDs, climbs back to this break-even
+    # anyway. We still compute the argmax to PRINT its in-sample (overfit) edge.
+    tau = theoretical_tau()                    # closed-form break-even -- THE cut (~0.226)
     cands = np.unique(np.round(pd_va[lab_va], 4))
-    tau, best = cands[-1] + 1e-6, -np.inf
+    tau_arg, best = float(cands[-1]) + 1e-6, -np.inf
     for tc in cands:
         tot = np.nansum(npv_va[lab_va & (pd_va < tc)])
         if tot > best:
-            best, tau = tot, tc
-    tau_th = theoretical_tau()                # closed-form break-even (cross-check)
+            best, tau_arg = tot, float(tc)
 
     appr = lab_va & (pd_va < tau)
+    appr_arg = lab_va & (pd_va < tau_arg)
     npv_cut, npv_all = np.nansum(npv_va[appr]), np.nansum(npv_va[lab_va])
+    npv_arg = np.nansum(npv_va[appr_arg])
     pl_cut, funded = np.nansum(profit_va[appr]), np.nansum(amt_va[appr])
     print(f"[4] LGD={LGD:.2f} (recover {RECOVERY_RATE:.0%}; empirical train recovery={emp_recovery:.3f}=trap)  "
-          f"discount={DISCOUNT_RATE_ANNUAL:.0%}/yr  default-day med={np.median(default_dd):.0f}  "
-          f"tau_NPV={tau:.4f} (break-even~{tau_th:.4f})  approve-rate(val)={appr.sum()/lab_va.sum():.3f}")
-    print(f"    [labelled val] NPV @cut=${npv_cut:,.0f} vs approve-all ${npv_all:,.0f} "
-          f"(lift ${npv_cut-npv_all:,.0f})  P&L @cut=${pl_cut:,.0f}  "
-          f"NPV-margin={npv_cut / funded:.2%}")
+          f"discount={DISCOUNT_RATE_ANNUAL:.0%}/yr  default-day med={np.median(default_dd):.0f}")
+    print(f"    DECISION tau=break-even={tau:.4f} approve(val)={appr.sum()/lab_va.sum():.3f}  "
+          f"vs OVERFIT argmax={tau_arg:.4f} approve={appr_arg.sum()/lab_va.sum():.3f}")
+    print(f"    [labelled val] NPV @break-even=${npv_cut:,.0f}  @argmax=${npv_arg:,.0f} "
+          f"(argmax in-sample edge ${npv_arg-npv_cut:,.0f})  approve-all ${npv_all:,.0f}  "
+          f"P&L@cut=${pl_cut:,.0f}  NPV-margin={npv_cut / funded:.2%}")
 
     # --- 5. assemble all applicants, ordered to expected_ids ---
     out = pd.DataFrame({
