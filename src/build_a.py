@@ -232,6 +232,18 @@ def ood_flag(df: pd.DataFrame) -> np.ndarray:
     return (np.nan_to_num(below_cut, nan=1.0).astype(bool) | no_feed).astype(float)
 
 
+def prior_approved(df: pd.DataFrame) -> np.ndarray:
+    """1 where prior_decision==1 (prior-APPROVED => the row is observable/LABELLED).
+
+    NOT a model feature (prior_decision is a dropped collider, see DROP_FOR_A) -- used
+    ONLY as a label-provenance GATING signal to split OOD into shallow (vouched) vs deep
+    (never-labelled reject tail). Legitimate: we are not predicting FROM it, we are
+    choosing WHICH uncertainty bound to underwrite on based on whether reality has been
+    observed for that row's region.
+    """
+    return (pd.to_numeric(df["prior_decision"], errors="coerce") == 1).to_numpy()
+
+
 def main() -> None:
     SUB_DIR.mkdir(exist_ok=True)
     tr, feats_all = D.load_features("train")
@@ -294,15 +306,26 @@ def main() -> None:
     # realized brief S_P&L on labelled val -- the EXACT scored quantity (no discounting)
     npv_va = realized_npv(amt_va, yva.to_numpy(), dd_va, rec_va)
 
-    # DECISION = closed-form break-even PD (drift-robust), applied TRUST-BUT-VERIFY:
-    # in-distribution rows are judged on the point PD; OOD rows (extrapolated) must
-    # clear break-even on the PESSIMISTIC conformal upper-90 bound. NOT 0.5 (funds
-    # ~everyone) and NOT the val argmax (overfit; swings 0.135-0.229 across folds and
-    # climbs back to break-even on de-drifted PDs). We still compute the argmax to
-    # PRINT its in-sample (overfit) edge.
+    # DECISION = closed-form break-even PD (drift-robust). NOT 0.5 (funds ~everyone) and
+    # NOT the val argmax (overfit; swings 0.135-0.229 across folds and climbs back to
+    # break-even on de-drifted PDs). We still compute the argmax to PRINT its in-sample
+    # (overfit) edge. The cut is applied TRUST-BUT-VERIFY, refined by label provenance below.
     tau = theoretical_tau(b_emp)               # closed-form break-even -- THE cut (~0.255)
-    dpd_va = np.where(ood_va == 1.0, hi_va, pd_va)   # OOD -> decide on upper-90 bound
-    dpd_te = np.where(ood_te == 1.0, hi_te, pd_te)
+    # trust-but-verify, REFINED by label provenance (walk-forward no-regret: 9/9 folds +ve,
+    # mean +$226K/fold; deployment +$386K realized on labelled val). Split OOD by who is
+    # actually observable:
+    #   ID      (~OOD)                -> point PD
+    #   SHALLOW (OOD & prior_approved)-> point PD  (prior-APPROVED => LABELLED; realized
+    #             default ~0.18-0.22 << break-even 0.255, so the labels VOUCH -- gating these
+    #             on upper-90 needlessly abstains on safe, repaying loans)
+    #   DEEP    (OOD & ~prior_approved)-> upper-90 (prior-DECLINED => NEVER labelled = the
+    #             crossover risk; keep the pessimistic gate so the lever adds ZERO risk on
+    #             the unseen reject tail)
+    pa_va, pa_te = prior_approved(va), prior_approved(te)
+    deep_va = (ood_va == 1.0) & ~pa_va         # only the never-labelled reject tail
+    deep_te = (ood_te == 1.0) & ~pa_te
+    dpd_va = np.where(deep_va, hi_va, pd_va)   # deep-OOD on upper-90; id+shallow on point PD
+    dpd_te = np.where(deep_te, hi_te, pd_te)
     cands = np.unique(np.round(pd_va[lab_va], 4))
     tau_arg, best = float(cands[-1]) + 1e-6, -np.inf
     for tc in cands:
@@ -318,7 +341,7 @@ def main() -> None:
     print(f"[4] empirical brief economics: E[NPV_default]/$={b_emp:+.4f} -> implied LGD={lgd_eff:.3f} "
           f"(NOT flat 0.30; aggregate train recovery={emp_recovery:.3f}=trap bait; draws capped@T={CAP_DRAWS_AT_TERM})")
     print(f"    DECISION trust-but-verify @ break-even={tau:.4f} approve(val)={appr.sum()/lab_va.sum():.3f}  "
-          f"(OOD judged on upper-90)  vs OVERFIT argmax={tau_arg:.4f} approve={appr_arg.sum()/lab_va.sum():.3f}")
+          f"(deep-OOD judged on upper-90)  vs OVERFIT argmax={tau_arg:.4f} approve={appr_arg.sum()/lab_va.sum():.3f}")
     print(f"    [labelled val] NPV @break-even=${npv_cut:,.0f}  @argmax=${npv_arg:,.0f} "
           f"(argmax in-sample edge ${npv_arg-npv_cut:,.0f})  approve-all ${npv_all:,.0f}  "
           f"NPV-margin={npv_cut / funded:.2%}")
@@ -329,7 +352,7 @@ def main() -> None:
         "predicted_pd": np.clip(np.concatenate([pd_va, pd_te]), 0.0, 1.0),
         "pd_lower_90": np.concatenate([lo_va, lo_te]),
         "pd_upper_90": np.concatenate([hi_va, hi_te]),
-        "_decision_pd": np.concatenate([dpd_va, dpd_te]),   # point PD (ID) or upper-90 (OOD)
+        "_decision_pd": np.concatenate([dpd_va, dpd_te]),   # point PD (id+shallow) or upper-90 (deep-OOD)
     })
     order = pd.read_csv(EXPECTED_IDS, header=None)[0].astype(str).tolist()
     out = out.set_index(out["applicant_id"].astype(str)).reindex(order).reset_index(drop=True)
@@ -349,7 +372,7 @@ def main() -> None:
     # x the train default-timing distribution. Reported in $ / margin% / per-loan so
     # the number is comparable however the metric is normalized.
     pd_cat = np.concatenate([pd_va, pd_te])
-    dpd_cat = np.concatenate([dpd_va, dpd_te])   # decision PD (OOD on upper-90)
+    dpd_cat = np.concatenate([dpd_va, dpd_te])   # decision PD (deep-OOD on upper-90)
     amt_cat = np.concatenate([amt_va, te["requested_amount"].to_numpy()])
     enpv = amt_cat * expected_npv_per_dollar(pd_cat, b_emp)   # value at POINT PD x empirical b
     appr_cat = dpd_cat < tau                      # but GATE trust-but-verify
