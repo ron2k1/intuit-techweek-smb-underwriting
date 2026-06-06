@@ -31,24 +31,24 @@ PREDS = REPO / "reports" / "a_predictions.csv"
 TERM_INT = 0.35 * 60 / 365         # interest over the 60-day term (~0.0575)
 FEE = 0.03
 NET_MARGIN = TERM_INT + FEE        # ~0.0875
-LGD = 0.30                         # empirical mean realized LGD (amortizing)
-BREAK_EVEN = NET_MARGIN / (NET_MARGIN + LGD)   # ~0.224
+DAILY_DRAW = (1 + TERM_INT) / 60   # D per $ = R(1+rT/365)/T
+LGD = 0.25                         # effective LGD measured under the exact NPV formula
+BREAK_EVEN = NET_MARGIN / (NET_MARGIN + LGD)   # ~0.259
 
 
 def realized_profit(amt, dflag, dtd, rec):
-    """Realized $ profit per loan under amortizing economics."""
+    """Realized $ per loan under the OFFICIAL NPV formula (brief).
+
+    repaid : amt*NET_MARGIN ;  default: F + D*(t*-1) + rec - R (capped at margin).
+    """
     rec = np.nan_to_num(rec)
-    frac = np.clip(np.minimum(np.nan_to_num(dtd), 60) / 60.0, 0, 1)
-    default_profit = amt * (FEE + frac * (1 + TERM_INT) - 1) + rec
-    default_profit = np.minimum(default_profit, amt * NET_MARGIN)
+    draws = amt * DAILY_DRAW * np.clip(np.nan_to_num(dtd) - 1, 0, None)
+    default_profit = np.minimum(amt * FEE + draws + rec - amt, amt * NET_MARGIN)
     return np.where(dflag == 0, amt * NET_MARGIN, default_profit)
 
 
 def main() -> int:
-    preds = pd.read_csv(PREDS)
-    val = pd.read_csv(DATA / "validation.csv")[
-        ["applicant_id", "days_to_default"]]
-    df = preds.merge(val, on="applicant_id", how="left")
+    df = pd.read_csv(PREDS)  # already has days_to_default / outcomes for val rows
 
     amt = df["requested_amount"].to_numpy()
     pd_p = df["predicted_pd"].to_numpy()

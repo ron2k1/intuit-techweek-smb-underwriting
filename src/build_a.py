@@ -25,8 +25,12 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.isotonic import IsotonicRegression
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -39,6 +43,12 @@ OUT = REPO / "submissions" / "submission_A_decisions.csv"
 
 SEED = 17
 N_BOOT = 25  # ensemble size for epistemic intervals
+# Blend weight on the HGB arm. The PD signal is largely linear: a regularized
+# logistic alone out-ranks the tree, and 0.4*HGB + 0.6*Logit lifts OOF AUC
+# 0.7740 -> 0.7767 (paired gain positive in ALL 5 folds; see src/wf_auc_model.py).
+# w in [0.4, 0.5] is equivalent -- not a precisely tuned value. The tree arm is
+# kept as a calibration/robustness hedge against the linear fit drifting.
+W_HGB = 0.4
 
 # ---- Column bookkeeping -------------------------------------------------- #
 OUTCOME_COLS = [
@@ -69,9 +79,19 @@ MISSING_IND = [
 # only recovery. See src/check_lgd.py. This sets break-even PD ~0.224, not 0.088.
 TERM_INT = 0.35 * 60 / 365           # interest over the 60-day term (~0.0575)
 FEE = 0.03                           # origination fee
-NET_MARGIN = TERM_INT + FEE          # ~0.0875 fully-repaid net
-LGD = 0.30                           # mean realized LGD under amortization
-BREAK_EVEN_PD = NET_MARGIN / (LGD + NET_MARGIN)  # ~0.224
+NET_MARGIN = TERM_INT + FEE          # ~0.0875 fully-repaid net (= F + R*r*T/365 per $)
+DAILY_DRAW = (1 + TERM_INT) / 60     # D per $ of principal = R(1+rT/365)/T
+# Loss is taken from the OFFICIAL amortizing NPV formula (challenge brief), NOT a
+# fixed fraction:  default NPV/$ = FEE + DAILY_DRAW*(t*-1) + rec/R - 1 (capped at
+# NET_MARGIN). The empirically-measured mean -(default NPV/$) under this formula is
+# ~0.25 (capped), NOT 0.30 -- late defaults repay most principal via daily draws
+# (mean t*=43/60). Walk-forward on the exact formula puts the profit-max threshold
+# robustly at ~0.26 (latest blocks 0.265), above the old flat-LGD 0.226. We use the
+# measured effective LGD. See src/exact_npv_test.py. (The brief's LITERAL uncapped
+# formula gives LGD~0.14 / break-even ~0.28 for ~+2.5% more, but credits 22.5% of
+# defaults above full repayment -- left as a documented team decision.)
+LGD = 0.25                           # effective LGD measured under the exact NPV formula
+BREAK_EVEN_PD = NET_MARGIN / (LGD + NET_MARGIN)  # ~0.259
 
 
 def build_cat_dtypes(*frames: pd.DataFrame) -> dict[str, CategoricalDtype]:
@@ -114,6 +134,29 @@ def make_model(seed: int) -> HistGradientBoostingClassifier:
         validation_fraction=0.1,
         categorical_features="from_dtype",
         random_state=seed,
+    )
+
+
+def numeric_frame(X: pd.DataFrame) -> pd.DataFrame:
+    """NaN-aware numeric matrix for the linear arm (category -> integer codes)."""
+    Z = X.copy()
+    for c in Z.columns:
+        if str(Z[c].dtype) == "category":
+            Z[c] = Z[c].cat.codes.replace(-1, np.nan)  # missing category -> NaN
+        else:
+            Z[c] = pd.to_numeric(Z[c], errors="coerce")
+    return Z
+
+
+def make_logit():
+    """Regularized logistic scorecard: median-impute -> standardize -> L2 logistic.
+
+    Structurally different (additive) errors from the tree, so the blend lifts AUC.
+    """
+    return make_pipeline(
+        SimpleImputer(strategy="median"),
+        StandardScaler(),
+        LogisticRegression(C=0.5, max_iter=3000),
     )
 
 
@@ -171,26 +214,47 @@ def main() -> int:
     val_mean = val_scores.mean(axis=1)
     test_mean = test_scores.mean(axis=1)
 
+    # ---- Linear arm + blend (rank-diverse; OOF-validated AUC lift) ------ #
+    # Fit a logistic scorecard on the SAME observed rows and blend its prob with
+    # the HGB ensemble mean. The point PD is the blended, calibrated score (better
+    # ranking); the 90% interval still comes from the HGB ensemble spread, since
+    # the logistic adds no spread and must NOT artificially narrow the band.
+    Z_obs = numeric_frame(X_obs)
+    logit = make_logit().fit(Z_obs, y)
+    logit_val = logit.predict_proba(numeric_frame(f_val))[:, 1]
+    logit_test = logit.predict_proba(numeric_frame(f_test))[:, 1]
+    val_blend = W_HGB * val_mean + (1 - W_HGB) * logit_val
+    test_blend = W_HGB * test_mean + (1 - W_HGB) * logit_test
+
     # ---- Isotonic calibration on validation outcomes ------------------- #
     vmask = val["default_flag"].notna().to_numpy()
-    iso = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
-    iso.fit(val_mean[vmask], val.loc[vmask, "default_flag"].astype(int).to_numpy())
+    yv = val.loc[vmask, "default_flag"].astype(int).to_numpy()
+    iso_pt = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
+    iso_pt.fit(val_blend[vmask], yv)                 # POINT PD: calibrate the blend
+    iso_iv = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
+    iso_iv.fit(val_mean[vmask], yv)                  # INTERVAL: calibrate HGB spread
 
-    def calibrate(s: np.ndarray) -> np.ndarray:
-        return np.clip(iso.predict(s), 1e-6, 1 - 1e-6)
+    def cal_pt(s):
+        return np.clip(iso_pt.predict(s), 1e-6, 1 - 1e-6)
 
-    # Calibrated point PD + ensemble-based 90% interval (calibrate the quantiles too).
-    def predict_block(scores: np.ndarray):
-        mean = scores.mean(axis=1)
+    def cal_iv(s):
+        return np.clip(iso_iv.predict(s), 1e-6, 1 - 1e-6)
+
+    print(f"[blend] val AUC  HGB={roc_auc_score(yv, val_mean[vmask]):.4f}  "
+          f"logit={roc_auc_score(yv, logit_val[vmask]):.4f}  "
+          f"blend={roc_auc_score(yv, val_blend[vmask]):.4f}  (w_hgb={W_HGB})")
+
+    # Calibrated point PD (blend) + ensemble-based 90% interval (HGB quantiles).
+    def predict_block(scores: np.ndarray, blend_mean: np.ndarray):
         lo = np.quantile(scores, 0.05, axis=1)
         hi = np.quantile(scores, 0.95, axis=1)
-        pd_point = calibrate(mean)
-        pd_lo = np.minimum(calibrate(lo), pd_point)
-        pd_hi = np.maximum(calibrate(hi), pd_point)
+        pd_point = cal_pt(blend_mean)
+        pd_lo = np.minimum(cal_iv(lo), pd_point)
+        pd_hi = np.maximum(cal_iv(hi), pd_point)
         return pd_point, pd_lo, pd_hi
 
-    val_pd, val_lo, val_hi = predict_block(val_scores)
-    test_pd, test_lo, test_hi = predict_block(test_scores)
+    val_pd, val_lo, val_hi = predict_block(val_scores, val_blend)
+    test_pd, test_lo, test_hi = predict_block(test_scores, test_blend)
 
     # ---- Coverage sanity-check on validation --------------------------- #
     _coverage_report(val_pd[vmask], val_lo[vmask], val_hi[vmask],
@@ -273,9 +337,10 @@ def _realized_value(preds: pd.DataFrame, decision: np.ndarray) -> tuple[float, i
     rec = np.nan_to_num(preds["final_recovered_amount"].to_numpy())
     has_truth = ~np.isnan(d)
     funded = (decision == 1) & has_truth
-    frac = np.clip(np.minimum(np.nan_to_num(dtd), 60) / 60.0, 0, 1)
-    default_profit = np.minimum(amt * (FEE + frac * (1 + TERM_INT) - 1) + rec,
-                                amt * NET_MARGIN)
+    # Official NPV: repaid -> amt*NET_MARGIN; default -> F + D*(t*-1) + rec - R
+    # (capped at the repaid margin -- a default cannot out-earn full repayment).
+    draws = amt * DAILY_DRAW * np.clip(np.nan_to_num(dtd) - 1, 0, None)
+    default_profit = np.minimum(amt * FEE + draws + rec - amt, amt * NET_MARGIN)
     profit = np.where(d == 0, amt * NET_MARGIN, default_profit)
     return float(profit[funded].sum()), int(funded.sum())
 
