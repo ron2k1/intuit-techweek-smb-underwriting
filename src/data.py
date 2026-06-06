@@ -82,6 +82,43 @@ INFORMATIVE_NULL = [
 COHORT_START = pd.Timestamp("2025-06-30")
 N_COHORT_WEEKS = 13
 
+# Nominal integer-coded categoricals (codes are arbitrary labels, NOT magnitudes).
+# We declare these to the booster as categorical_features so it splits on SUBSETS
+# of levels instead of on a meaningless code threshold. The other two coded fields
+# (employee_count_bucket, owner_personal_credit_band) are ORDINAL -- "smaller code =
+# fewer employees" / credit band ordering -- so we keep them numeric on purpose.
+CATEGORICAL_NOMINAL = [
+    "sector",
+    "geography_region",
+    "intended_use_of_funds",
+    "application_channel",
+]
+
+# --- causal taxonomy (Deliverable C) -----------------------------------------
+# C must estimate an INTERVENTIONAL effect, so its outcome model must be backdoor
+# valid: drop selection/collider nodes and drop self-report fields whose true causal
+# effect on default is ~0 (the "self-report inflation" trap). A keeps all of these
+# because A only needs PREDICTION. This list is exactly the A-vs-C difference.
+COLLIDERS = [
+    # prior lender's score + decision: the selection mechanism that created the
+    # labelled sample. Conditioning on them for a causal effect opens a backdoor.
+    "prior_underwriter_score",
+    "prior_decision",
+]
+SELF_REPORT_CAUSAL_NULL = [
+    # what the applicant *wrote* does not change whether their business repays;
+    # the real driver is the bank-observed counterpart. do(stated_*) true effect ~0.
+    "stated_annual_revenue",
+    "stated_time_in_business",
+]
+SELF_REPORT_DERIVED = [
+    # engineered from stated_* -> carry the same self-report content, not a cause.
+    "lev_stated",
+    "report_gap",
+]
+# cohort_week is a calendar index (constant 0 in train), not a cause -> drop for C.
+CAUSAL_EXCLUDE = COLLIDERS + SELF_REPORT_CAUSAL_NULL + SELF_REPORT_DERIVED + ["cohort_week"]
+
 
 def load_raw(split: str) -> pd.DataFrame:
     """Load one split verbatim. split in {train, val, test}."""
@@ -121,6 +158,23 @@ def feature_columns(df: pd.DataFrame) -> list[str]:
     """Every legitimate application-time predictor (post-engineering)."""
     drop = set(IDS + LEAKAGE + TRAP_COLS + RAW_DROP + [TARGET])
     return [c for c in df.columns if c not in drop]
+
+
+def causal_feature_columns(df: pd.DataFrame) -> list[str]:
+    """Backdoor-valid predictor set for Deliverable C.
+
+    feature_columns() minus colliders/selection nodes and self-report fields.
+    Intervening on an excluded feature therefore moves the prediction by exactly
+    zero -- which is the correct interventional answer for the self-report trap.
+    """
+    drop = set(CAUSAL_EXCLUDE)
+    return [c for c in feature_columns(df) if c not in drop]
+
+
+def categorical_indices(feats: list[str]) -> list[int]:
+    """Positions of the nominal categoricals within `feats`, for HGB's
+    categorical_features= argument (codes are already non-negative ints)."""
+    return [i for i, c in enumerate(feats) if c in set(CATEGORICAL_NOMINAL)]
 
 
 def to_model_matrix(df: pd.DataFrame, feats: list[str]) -> pd.DataFrame:
