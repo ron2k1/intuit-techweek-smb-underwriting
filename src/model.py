@@ -62,34 +62,49 @@ def hgb(seed: int, cat_idx: list[int] | None = None,
 
 def fit_calibrated(X: np.ndarray, y: np.ndarray, cat_idx: list[int] | None = None,
                    seed: int = DEFAULT_SEED, cv: int = 5,
-                   scoring: str = "loss") -> CalibratedClassifierCV:
+                   scoring: str = "loss",
+                   sample_weight: np.ndarray | None = None) -> CalibratedClassifierCV:
     """Probability-calibrated PD model (isotonic, internal CV).
 
     Isotonic (not Platt) because the selection bias bends the reliability curve
     non-monotonically in shape but monotonically in rank; isotonic respects the
     ranking while free-form correcting the levels.
+
+    `sample_weight` (optional) flows to BOTH the booster fit and the isotonic
+    calibrator across every CV fold. Deliverable A passes recency (time-decay)
+    weights so the calibrated LEVEL tracks the recent, higher-default regime the
+    walk-forward backtest found drifting upward -- ranking is unchanged, only the
+    probability level is corrected.
     """
     cal = CalibratedClassifierCV(hgb(seed, cat_idx, scoring), method="isotonic", cv=cv)
-    cal.fit(X, y)
+    cal.fit(X, y, sample_weight=sample_weight)
     return cal
 
 
 def bootstrap_pd(X: np.ndarray, y: np.ndarray, targets: list[np.ndarray],
                  cat_idx: list[int] | None = None, seed: int = DEFAULT_SEED,
-                 n_models: int = 12, scoring: str = "loss") -> list[np.ndarray]:
+                 n_models: int = 12, scoring: str = "loss",
+                 sample_weight: np.ndarray | None = None) -> list[np.ndarray]:
     """Bootstrap-ensemble PD for each matrix in `targets`.
 
     Returns a list aligned with `targets`; element j is an (n_models, len(targets[j]))
     array of PD predictions. The across-model standard deviation is the epistemic
     uncertainty: where the labelled data pins the surface it is small, where we
     extrapolate (reject region) the resampled models disagree and it grows.
+
+    `sample_weight` (optional) is carried through each bootstrap resample (weights
+    indexed by the resampled rows) so the uncertainty band reflects the SAME recency
+    regime as the point PD -- otherwise the intervals would be calibrated to the
+    stale full-history mix while the point estimate tracks the recent regime.
     """
     rng = np.random.default_rng(seed)
     n = len(X)
+    sw = None if sample_weight is None else np.asarray(sample_weight, float)
     out = [np.empty((n_models, len(t))) for t in targets]
     for k in range(n_models):
         idx = rng.integers(0, n, n)
-        m = hgb(seed + 1 + k, cat_idx, scoring).fit(X[idx], y[idx])
+        m = hgb(seed + 1 + k, cat_idx, scoring).fit(
+            X[idx], y[idx], sample_weight=(None if sw is None else sw[idx]))
         for j, t in enumerate(targets):
             out[j][k] = m.predict_proba(t)[:, 1]
     return out
