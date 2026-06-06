@@ -1,0 +1,38 @@
+{
+  "feature_set": "all_engineered",
+  "approved_total": 9033,
+  "approval_rate": 0.6788666766872088,
+  "prior_declined_approved_total": 2591,
+  "prior_declined_approval_rate": 0.44741840787428766,
+  "approved_expected_npv_total": 14821919.347689167,
+  "prior_declined_approved_expected_npv": 4542002.044689512,
+  "prior_declined_approved_mean_pd": 0.1391659131135634,
+  "prior_declined_approved_mean_support": 0.6158203738663015,
+  "intervention_features_total": 30,
+  "intervention_features_missing_from_raw_data": [],
+  "bootstrap_validation_npv": {
+    "labeled_validation_rows": 2551,
+    "point_estimate": 3912480.1426391727,
+    "bootstrap_p05": 3515564.8183090584,
+    "bootstrap_p50": 3898512.181406792,
+    "bootstrap_p95": 4296075.40463496,
+    "bootstrap_std": 237120.42186956806
+  },
+  "split_leakage_audit": {
+    "train_rows": 85340,
+    "validation_rows": 4489,
+    "test_rows": 8817,
+    "labeled_train_rows": 51722,
+    "model_split_rows": 41377,
+    "calibration_split_rows": 10345,
+    "businesses_in_both_model_and_calibration": 410,
+    "business_overlap_train_validation": 0,
+    "business_overlap_train_test": 0,
+    "business_overlap_validation_test": 0
+  },
+  "grouped_time_cv_mean": {
+    "auroc": 0.7471239948269148,
+    "log_loss": 0.4031018013793965,
+    "brier": 0.12370023700698653
+  }
+}

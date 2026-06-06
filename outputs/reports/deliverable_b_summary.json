@@ -1,11 +1,11 @@
 {
   "buffer_per_dollar": 0.005,
-  "validation_labeled_realized_npv": 3867998.4575711302,
-  "validation_labeled_approved": 2012,
-  "validation_labeled_approval_rate": 0.7887103096824775,
-  "validation_all_approval_rate": 0.6375584762753397,
-  "test_approval_rate": 0.6368379267324487,
-  "approved_eval_total": 8477,
+  "validation_labeled_realized_npv": 3912480.1426391727,
+  "validation_labeled_approved": 2196,
+  "validation_labeled_approval_rate": 0.8608388867110937,
+  "validation_all_approval_rate": 0.678547560703943,
+  "test_approval_rate": 0.6790291482363616,
+  "approved_eval_total": 9033,
   "submission_b_rows": 169,
-  "submission_b_week13_mean": 0.1437874365179307
+  "submission_b_week13_mean": 0.14695220270795
 }

@@ -1,0 +1,22 @@
+{
+  "numeric_features_used": 59,
+  "pc1_explained_variance": 0.23649858512636088,
+  "pc5_cumulative_explained_variance": 0.5807280308684372,
+  "correlation_edges_abs_ge_0p60": 126,
+  "correlation_clusters": 5,
+  "largest_cluster_size": 34,
+  "top_predictive_factor_model": {
+    "model": "logistic_raw_numeric",
+    "n_features": 59,
+    "auroc": 0.756831432192649,
+    "average_precision": 0.5205975780646359,
+    "log_loss": 0.42947911325492355,
+    "brier": 0.13458797260011585,
+    "cal_auroc": NaN
+  },
+  "interpretation": [
+    "The engineered factors are useful for explanation and stability, but they are mostly low-dimensional summaries of raw correlated fields.",
+    "Tree models already exploit much of this structure, so extra hand-built factors do not guarantee higher NPV.",
+    "The strongest opportunity is to use latent factors for reject-region governance, causal shrinkage, and monotonic/scorecard constraints."
+  ]
+}

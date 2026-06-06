@@ -1,0 +1,98 @@
+{
+  "feature_set": "all_engineered",
+  "leakage": {
+    "feature_count": 106,
+    "forbidden_feature_count": 0,
+    "forbidden_features": [],
+    "business_overlap_model_calibration": 410,
+    "business_overlap_train_validation": 0,
+    "business_overlap_train_test": 0,
+    "business_overlap_validation_test": 0,
+    "suspicious_single_feature_auc_count": 0
+  },
+  "drift": {
+    "max_train_validation_psi": 16.831905078366727,
+    "max_train_test_psi": 16.827056769395462,
+    "high_psi_feature_count": 14,
+    "max_model_relevant_train_validation_psi": 2.252301702292973,
+    "max_model_relevant_train_test_psi": 2.351708175707718,
+    "high_model_relevant_psi_feature_count": 10
+  },
+  "recency_weighting": [
+    {
+      "variant": "unweighted_lightgbm",
+      "rows": 2551,
+      "default_rate": 0.2061936495491964,
+      "auroc": 0.7406332441440172,
+      "log_loss": 0.43968260746182997,
+      "brier": 0.13825177514012443,
+      "mean_pd": 0.20866168501269367,
+      "best_threshold": -0.03553167749045903,
+      "best_labeled_validation_npv": 3817365.623247761,
+      "best_labeled_approved": 2237
+    },
+    {
+      "variant": "recency_weighted_lightgbm",
+      "rows": 2551,
+      "default_rate": 0.2061936495491964,
+      "auroc": 0.7383898981364128,
+      "log_loss": 0.4391372686552569,
+      "brier": 0.13800346290426688,
+      "mean_pd": 0.21004276555269322,
+      "best_threshold": -0.05085561193881066,
+      "best_labeled_validation_npv": 3767739.9743739683,
+      "best_labeled_approved": 2301
+    }
+  ],
+  "reject_augmentation": {
+    "best_variant": {
+      "variant": "simple_gamma_1.5",
+      "method": "simple",
+      "reject_odds_gamma": 1.5,
+      "rows": 2551,
+      "default_rate": 0.2061936495491964,
+      "auroc": 0.7427029056940337,
+      "log_loss": 0.43621535387493315,
+      "brier": 0.1366113562776494,
+      "mean_pd": 0.2095237183867551,
+      "threshold": 0.015,
+      "labeled_validation_npv": 3847113.9357558023,
+      "labeled_approved": 1945,
+      "labeled_default_rate_approved": 0.07197943444730077,
+      "mean_pd_prior_declined_eval": 0.3512013617570573,
+      "p90_pd_prior_declined_eval": 0.7142857142857143,
+      "mean_pd_prior_approved_eval": 0.21169604349679794
+    },
+    "active_style_accept_only": {
+      "variant": "accept_only",
+      "method": "none",
+      "reject_odds_gamma": 1.0,
+      "rows": 2551,
+      "default_rate": 0.2061936495491964,
+      "auroc": 0.7463676477491432,
+      "log_loss": 0.4370984160396921,
+      "brier": 0.13712439823545416,
+      "mean_pd": 0.20993537240261903,
+      "threshold": -0.020000000000000004,
+      "labeled_validation_npv": 3808319.8645013375,
+      "labeled_approved": 2167,
+      "labeled_default_rate_approved": 0.0904476234425473,
+      "mean_pd_prior_declined_eval": 0.3510520380988861,
+      "p90_pd_prior_declined_eval": 0.7391304347826086,
+      "mean_pd_prior_approved_eval": 0.212248466082313
+    }
+  },
+  "reject_inference": {
+    "prior_declined_approved": 2591,
+    "base_prior_declined_expected_npv": 4542002.044689512,
+    "prior_declined_expected_npv_gamma_3x": 2533393.172568272,
+    "prior_declined_expected_npv_gamma_6x": 895908.5250503453
+  },
+  "hazard_timing": {
+    "mean_abs_cdr_error": 0.013974392685691193,
+    "p95_abs_error": 0.04796700809157219,
+    "max_abs_error": 0.0608251285625041,
+    "life_table_week13_empirical_cdr": 0.14754098360655776,
+    "life_table_week13_predicted_cdr": 0.15130094291153726
+  }
+}

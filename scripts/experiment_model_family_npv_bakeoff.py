@@ -38,11 +38,13 @@ CSV_DIR = PROJECT_ROOT / "data" / "csv-files"
 CURVES_PATH = PROJECT_ROOT / "outputs" / "deliverable_a_curves.npz"
 SUBMISSION_A_PATH = PROJECT_ROOT / "outputs" / "submission" / "submission_A_decisions.csv"
 
-DROP_PRIOR_SCORE_PROXIES = {
-    "prior_underwriter_score",
-    "prior_score_logit",
-    "selection_support_index",
-}
+DROP_PRIOR_SCORE_PROXY_TOKENS = (
+    "prior_underwriter",
+    "prior_decision",
+    "prior_approved",
+    "prior_score",
+    "selection_support",
+)
 
 
 def make_preprocessor(numeric: list[str], categorical: list[str]) -> ColumnTransformer:
@@ -75,8 +77,8 @@ def feature_set_columns(train_fe: pd.DataFrame, feature_set: str) -> tuple[list[
     if feature_set == "current_predictive":
         return numeric + categorical, numeric, categorical
     if feature_set == "no_prior_score":
-        numeric = [c for c in numeric if c not in DROP_PRIOR_SCORE_PROXIES]
-        categorical = [c for c in categorical if c not in DROP_PRIOR_SCORE_PROXIES]
+        numeric = [c for c in numeric if not any(token in c for token in DROP_PRIOR_SCORE_PROXY_TOKENS)]
+        categorical = [c for c in categorical if not any(token in c for token in DROP_PRIOR_SCORE_PROXY_TOKENS)]
         return numeric + categorical, numeric, categorical
     raise ValueError(feature_set)
 

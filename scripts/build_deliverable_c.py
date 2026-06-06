@@ -26,6 +26,8 @@ def main() -> None:
     print("Wrote outputs/submission/submission_C_counterfactuals.csv")
     print("Wrote outputs/reports/deliverable_c_query_diagnostics.csv")
     print("Wrote outputs/reports/deliverable_c_feature_diagnostics.csv")
+    print("Wrote outputs/reports/deliverable_c_feature_treatment_plan.csv")
+    print("Wrote outputs/reports/deliverable_c_sign_violations.csv")
 
 
 if __name__ == "__main__":

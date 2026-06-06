@@ -67,6 +67,13 @@ DROP_FOR_PD = OUTCOME_COLUMNS | ID_COLUMNS | {
     "prior_decision",
     "prior_approved_amount",
 }
+PRIOR_POLICY_TOKENS = (
+    "prior_underwriter",
+    "prior_decision",
+    "prior_approved",
+    "prior_score",
+    "selection_support",
+)
 CATEGORICAL_BASE = {
     "sector",
     "geography_region",
@@ -282,9 +289,10 @@ def add_application_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def feature_columns(frame: pd.DataFrame) -> tuple[list[str], list[str], list[str]]:
     cols = [c for c in frame.columns if c not in DROP_FOR_PD]
-    feature_set = os.getenv("DELIVERABLE_A_FEATURE_SET", "baseline")
+    feature_set = os.getenv("DELIVERABLE_A_FEATURE_SET", "all_engineered")
     if feature_set != "all_engineered":
         cols = [c for c in cols if c not in EXPERIMENTAL_CONFOUNDER_FEATURES]
+    cols = [c for c in cols if not any(token in c for token in PRIOR_POLICY_TOKENS)]
     categorical = sorted(c for c in cols if c in CATEGORICAL_BASE)
     numeric = sorted(c for c in cols if c not in categorical)
     return cols, numeric, categorical

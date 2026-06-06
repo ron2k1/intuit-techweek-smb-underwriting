@@ -1,0 +1,3 @@
+policy,threshold,validation_labeled_realized_npv,validation_labeled_approved,validation_labeled_default_rate_approved,validation_all_approval_rate,test_approval_rate,approved_total,prior_declined_approved_total,headline_expected_npv
+active_threshold,-0.024999999999999994,3912480.1426391727,2196,0.14754098360655737,0.678547560703943,0.6790291482363616,9033,2591,14821919.347689167
+oof_selected_threshold,0.020000000000000004,3776245.1119028986,1909,0.1283394447354636,0.6146134996658499,0.6163094022910287,8193,2591,14824257.851133477

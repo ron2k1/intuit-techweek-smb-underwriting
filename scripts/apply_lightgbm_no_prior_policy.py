@@ -27,11 +27,13 @@ from src.deliverable_a_pipeline import add_application_features, feature_columns
 from src.economics import expected_npv, realized_npv  # noqa: E402
 
 
-DROP_PRIOR_SCORE_PROXIES = {
-    "prior_underwriter_score",
-    "prior_score_logit",
-    "selection_support_index",
-}
+DROP_PRIOR_SCORE_PROXY_TOKENS = (
+    "prior_underwriter",
+    "prior_decision",
+    "prior_approved",
+    "prior_score",
+    "selection_support",
+)
 MIN_PD_INTERVAL_HALF_WIDTH = 0.06
 PRIOR_DECLINED_MIN_MARGIN = 0.03
 
@@ -89,8 +91,8 @@ def main() -> None:
     validation_fe = add_application_features(validation)
     test_fe = add_application_features(test)
     _, numeric, categorical = feature_columns(train_fe)
-    numeric = [c for c in numeric if c not in DROP_PRIOR_SCORE_PROXIES]
-    categorical = [c for c in categorical if c not in DROP_PRIOR_SCORE_PROXIES]
+    numeric = [c for c in numeric if not any(token in c for token in DROP_PRIOR_SCORE_PROXY_TOKENS)]
+    categorical = [c for c in categorical if not any(token in c for token in DROP_PRIOR_SCORE_PROXY_TOKENS)]
     feature_cols = numeric + categorical
 
     model_idx, cal_idx = time_split_labeled(train)

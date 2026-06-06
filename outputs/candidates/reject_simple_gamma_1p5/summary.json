@@ -1,0 +1,34 @@
+{
+  "policy": "reject_inference_simple_augmentation_candidate",
+  "gamma": 1.5,
+  "reject_weight_scale": 0.35,
+  "accept_bad_rate_model_split": 0.16424583705923582,
+  "target_reject_bad_rate": 0.24636875558885374,
+  "pseudo_reject_bad_rate": 0.2711940032125647,
+  "pseudo_reject_bad_cutoff": 0.5427631578947368,
+  "threshold": -0.037500000000000006,
+  "prior_declined_min_margin": 0.03,
+  "validation_labeled_realized_npv": 3848445.6939940625,
+  "validation_labeled_approved": 2208,
+  "validation_labeled_approval_rate": 0.8655429243433947,
+  "validation_labeled_default_rate_approved": 0.09193840579710146,
+  "validation_all_approval_rate": 0.6872354644687013,
+  "test_approval_rate": 0.681524328002722,
+  "approved_total": 9094,
+  "prior_declined_approved_total": 2622,
+  "prior_declined_approval_rate": 0.4527715420480055,
+  "validation_pd_metrics": {
+    "auroc": 0.746028258930667,
+    "log_loss": 0.43516181743227067,
+    "brier": 0.13650449236458295,
+    "mean_pd": 0.2123028744707939,
+    "actual_default_rate": 0.2061936495491964
+  },
+  "validation_interval_coverage_90": {
+    "n": 2551,
+    "bin_coverage": 0.9,
+    "n_bins": 10,
+    "mean_width": 0.11951598208995821,
+    "median_width": 0.12
+  }
+}

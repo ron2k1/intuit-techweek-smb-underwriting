@@ -18,6 +18,9 @@ artifacts/ground_truth/
 artifacts/runs/
 artifacts/
 
+# Extracted duplicate of dataset zip
+dataset/dataset-compressed/
+
 # Local branch-comparison scratch checkouts
 comparison/
 

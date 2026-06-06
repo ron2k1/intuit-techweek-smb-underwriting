@@ -1,0 +1,61 @@
+{
+  "objective": "Purged expanding-window temporal OOF validation for raw-valid-prior A policy.",
+  "fold_count": 4,
+  "oof_rows": 41377,
+  "active_threshold": -0.024999999999999994,
+  "oof_selected_threshold": 0.020000000000000004,
+  "oof_active_threshold": {
+    "threshold": -0.024999999999999994,
+    "approved": 38253,
+    "approval_rate": 0.9244991178674142,
+    "realized_npv": 53867967.933438696,
+    "observed_default_rate_approved": 0.1449820929077458,
+    "mean_margin_approved": 0.07295436198317533
+  },
+  "oof_selected_threshold_metrics": {
+    "threshold": 0.020000000000000004,
+    "approved": 35501,
+    "approval_rate": 0.8579887377045219,
+    "realized_npv": 56121441.27031022,
+    "observed_default_rate_approved": 0.12689783386383482,
+    "mean_margin_approved": 0.07849924331097392
+  },
+  "oof_pd_metrics": {
+    "auroc": 0.7465418083051659,
+    "log_loss": 0.4055117856512239,
+    "brier": 0.12469656490062508,
+    "mean_pd": 0.16410946588410838,
+    "actual_default_rate": 0.1799792155061991
+  },
+  "official_validation_comparison": [
+    {
+      "policy": "active_threshold",
+      "threshold": -0.024999999999999994,
+      "validation_labeled_realized_npv": 3912480.1426391727,
+      "validation_labeled_approved": 2196,
+      "validation_labeled_default_rate_approved": 0.14754098360655737,
+      "validation_all_approval_rate": 0.678547560703943,
+      "test_approval_rate": 0.6790291482363616,
+      "approved_total": 9033,
+      "prior_declined_approved_total": 2591,
+      "headline_expected_npv": 14821919.347689167
+    },
+    {
+      "policy": "oof_selected_threshold",
+      "threshold": 0.020000000000000004,
+      "validation_labeled_realized_npv": 3776245.1119028986,
+      "validation_labeled_approved": 1909,
+      "validation_labeled_default_rate_approved": 0.1283394447354636,
+      "validation_all_approval_rate": 0.6146134996658499,
+      "test_approval_rate": 0.6163094022910287,
+      "approved_total": 8193,
+      "prior_declined_approved_total": 2591,
+      "headline_expected_npv": 14824257.851133477
+    }
+  ],
+  "interpretation": [
+    "Official train/validation/test split is unchanged.",
+    "OOF folds are expanding-window temporal folds with business_id purge from validation fold.",
+    "OOF threshold is used as a robustness diagnostic; current active can be kept if official-validation NPV gain outweighs OOF overfit risk."
+  ]
+}

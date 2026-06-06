@@ -2,4 +2,4 @@ person,model,lgd_assumption,break_even_pd,keeps_prior_underwriter_score,funds_pr
 Ronil,HistGradientBoosting + Logistic blend,0.30 amortizing / brief-standardized,0.2258748674443266,False,True,10297895.140853269,3080372.976332537,6853410.848527381,2277599.4284081366,Avoided
 Ayush,HistGradientBoosting bootstrap ensemble,0.30 amortizing,0.2258748674443266,True,False,10387141.42948097,3838677.425082708,5279456.5861244025,2754680.6861349447,Avoided
 Abhi,CatBoost 10-fold + isotonic,0.9086 empirical recovery trap,0.0879,True,True,4528069.502445374,1362112.4047574298,3350674.841771948,1128207.151655838,Fell in
-Steven,LightGBM no-prior-score PD + guarded hazard/recovery NPV policy,brief-faithful cash-flow formula,,False,True,14882918.917788738,3867998.4575711302,7411501.082256289,2764721.315493082,Avoided
+Steven,Compact raw valid-prior LightGBM + guarded hazard/recovery NPV policy,brief-faithful cash-flow formula,,False,True,14821919.347689167,3912480.1426391727,6742058.113168906,2729084.771330801,Avoided

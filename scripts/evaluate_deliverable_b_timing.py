@@ -44,43 +44,49 @@ def main() -> None:
     validation = pd.read_csv(root / "data" / "csv-files" / "validation.csv")
     cohorts = pd.read_csv(root / "data" / "cohort_week_definitions.csv")
     submission_a = pd.read_csv(root / "outputs" / "submission" / "submission_A_decisions.csv")
-    npz = np.load(root / "outputs" / "deliverable_a_curves.npz")
+    submission_b = pd.read_csv(root / "outputs" / "submission" / "submission_B_trajectory.csv")
 
     validation["cohort_week"] = assign_cohort_week(validation, cohorts)
     decisions = submission_a.iloc[: len(validation)]["decision"].to_numpy(int)
-    curves = normalize_curves_to_pd(npz["validation_cumulative"], npz["validation_pd"])
 
     labeled_approved = (validation["default_flag"].notna().to_numpy()) & (decisions == 1)
     frame = validation.loc[labeled_approved].copy()
-    pred_curves = curves[labeled_approved]
-
     rows = []
     for cohort_week in range(1, N_WEEKS + 1):
         cohort_mask = frame["cohort_week"].to_numpy(dtype=float) == cohort_week
         if not cohort_mask.any():
             continue
         cohort = frame.loc[cohort_mask]
-        cohort_pred = pred_curves[cohort_mask]
         default_flag = cohort["default_flag"].fillna(0).to_numpy(float)
         days_to_default = cohort["days_to_default"].to_numpy(float)
 
         for age_week in range(1, N_WEEKS + 1):
             cutoff = 7 * age_week
             actual = ((default_flag == 1) & (days_to_default <= cutoff)).mean()
-            predicted = cohort_pred[:, age_week - 1].mean()
             rows.append(
                 {
                     "cohort_week": cohort_week,
                     "loan_age_weeks": age_week,
                     "n_labeled_approved": int(len(cohort)),
                     "actual_cdr": float(actual),
-                    "predicted_cdr": float(predicted),
-                    "error": float(predicted - actual),
-                    "abs_error": float(abs(predicted - actual)),
                 }
             )
 
     diagnostics = pd.DataFrame(rows)
+    diagnostics = diagnostics.merge(
+        submission_b,
+        on=["cohort_week", "loan_age_weeks"],
+        how="left",
+        validate="one_to_one",
+    )
+    diagnostics = diagnostics.rename(columns={"cumulative_default_rate": "predicted_cdr"})
+    diagnostics["error"] = diagnostics["predicted_cdr"] - diagnostics["actual_cdr"]
+    diagnostics["abs_error"] = diagnostics["error"].abs()
+    diagnostics["interval_hit"] = (
+        (diagnostics["actual_cdr"] >= diagnostics["cdr_lower_90"])
+        & (diagnostics["actual_cdr"] <= diagnostics["cdr_upper_90"])
+    )
+    diagnostics["interval_width"] = diagnostics["cdr_upper_90"] - diagnostics["cdr_lower_90"]
     diagnostics.to_csv(report_dir / "deliverable_b_validation_timing_diagnostics.csv", index=False)
 
     summary = {
@@ -93,6 +99,9 @@ def main() -> None:
         "week13_mean_predicted_cdr": float(
             diagnostics.loc[diagnostics["loan_age_weeks"] == N_WEEKS, "predicted_cdr"].mean()
         ),
+        "interval_coverage": float(diagnostics["interval_hit"].mean()),
+        "mean_interval_width": float(diagnostics["interval_width"].mean()),
+        "median_interval_width": float(diagnostics["interval_width"].median()),
         "worst_rows": diagnostics.sort_values("abs_error", ascending=False).head(10).to_dict("records"),
     }
     (report_dir / "deliverable_b_validation_timing_summary.json").write_text(json.dumps(summary, indent=2))
@@ -101,4 +110,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

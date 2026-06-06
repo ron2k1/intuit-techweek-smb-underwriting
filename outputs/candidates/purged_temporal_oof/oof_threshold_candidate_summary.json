@@ -1,0 +1,13 @@
+{
+  "policy": "oof_selected_threshold_candidate",
+  "threshold": 0.020000000000000004,
+  "prior_declined_min_margin": 0.03,
+  "validation_labeled_realized_npv": 3776245.1119028986,
+  "validation_labeled_approved": 1909,
+  "validation_all_approval_rate": 0.6146134996658499,
+  "test_approval_rate": 0.6163094022910287,
+  "approved_total": 8193,
+  "prior_declined_approved_total": 2591,
+  "headline_expected_npv": 14824257.851133477,
+  "note": "Candidate only; not promoted because official labeled validation NPV is lower and prior-declined exposure is unchanged."
+}

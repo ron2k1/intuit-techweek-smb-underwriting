@@ -1,0 +1,12 @@
+{
+  "train_rows": 85340,
+  "validation_rows": 4489,
+  "test_rows": 8817,
+  "labeled_train_rows": 51722,
+  "model_split_rows": 41377,
+  "calibration_split_rows": 10345,
+  "businesses_in_both_model_and_calibration": 410,
+  "business_overlap_train_validation": 0,
+  "business_overlap_train_test": 0,
+  "business_overlap_validation_test": 0
+}

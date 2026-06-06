@@ -1,0 +1,10 @@
+{
+  "feature_count": 106,
+  "forbidden_feature_count": 0,
+  "forbidden_features": [],
+  "business_overlap_model_calibration": 410,
+  "business_overlap_train_validation": 0,
+  "business_overlap_train_test": 0,
+  "business_overlap_validation_test": 0,
+  "suspicious_single_feature_auc_count": 0
+}

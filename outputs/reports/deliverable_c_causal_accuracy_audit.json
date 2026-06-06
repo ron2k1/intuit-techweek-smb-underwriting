@@ -1,0 +1,30 @@
+{
+  "rows_expected": 900,
+  "rows_submitted": 900,
+  "unique_query_ids": 900,
+  "interval_order_violations": 0,
+  "duplicate_intervention_groups": 4,
+  "duplicate_predictions_consistent": true,
+  "features_with_treatment_rules": 30,
+  "treatment_missing_features": [],
+  "outside_train_min_max_queries": 0,
+  "tail_support_queries": 74,
+  "unseen_category_queries": 0,
+  "raw_material_sign_violations": 82,
+  "monotonic_guard_applied": 82,
+  "final_material_sign_violations": 0,
+  "mean_interval_width": 0.11361693853598509,
+  "mean_abs_delta_final": 0.016782026060819744,
+  "largest_abs_delta_final": 0.4281317081156084,
+  "classes": {
+    "amount_burden_intervention": 40,
+    "application_context_proxy": 79,
+    "credit_context_intervention": 49,
+    "credit_state_intervention": 144,
+    "historical_or_proxy": 165,
+    "measurement_process_intervention": 9,
+    "observed_business_state": 260,
+    "platform_state_intervention": 50,
+    "self_report_proxy": 104
+  }
+}
