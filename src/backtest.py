@@ -68,14 +68,17 @@ def main() -> None:
     X = D.to_model_matrix(tr, feats).to_numpy()
     amt = tr["requested_amount"].to_numpy()
     dd = pd.to_numeric(tr["days_to_default"], errors="coerce").to_numpy()
+    rec = pd.to_numeric(tr["final_recovered_amount"], errors="coerce").to_numpy()
     month = ts.dt.to_period("M")
 
     # forward test months = the last N_FOLDS distinct months that have labels
     lab_months = sorted(month[lab].dropna().unique())
     test_months = lab_months[-N_FOLDS:]
-    tau_th = A.theoretical_tau()
+    b_emp, lgd_eff = A.empirical_default_npv(tr, y)   # empirical brief NPV/$ on default
+    tau_th = A.theoretical_tau(b_emp)
     print(f"walk-forward: {len(test_months)} folds  test months "
-          f"{test_months[0]}..{test_months[-1]}  closed-form break-even tau={tau_th:.4f}\n")
+          f"{test_months[0]}..{test_months[-1]}  empirical b={b_emp:+.4f} (LGD {lgd_eff:.3f}) "
+          f"-> closed-form break-even tau={tau_th:.4f}\n")
     print(f"{'fold(test)':>10} {'train_n':>8} {'test_n':>7} {'AUC':>6} "
           f"{'pred_pd':>8} {'real_dr':>8} {'calib_gap':>10} {'tau*':>7}")
 
@@ -89,7 +92,7 @@ def main() -> None:
         p = clf.predict_proba(X[te_mask])[:, 1]
         yt = y[te_mask].astype(int).to_numpy()
         auc = float(roc_auc_score(yt, p))
-        npv = A.realized_npv(amt[te_mask], yt.astype(float), dd[te_mask])
+        npv = A.realized_npv(amt[te_mask], yt.astype(float), dd[te_mask], rec[te_mask])
         tau, _ = best_tau(p, npv)
         pred_pd, real_dr = float(p.mean()), float(yt.mean())
         rows.append({"month": str(m), "auc": auc, "pred_pd": pred_pd,
@@ -109,7 +112,8 @@ def main() -> None:
     auc_dep = roc_auc_score(yv, pv)
     amt_va = va["requested_amount"].to_numpy()[lva]
     dd_va = pd.to_numeric(va["days_to_default"], errors="coerce").to_numpy()[lva]
-    npv_va = A.realized_npv(amt_va, yv.astype(float), dd_va)
+    rec_va = pd.to_numeric(va["final_recovered_amount"], errors="coerce").to_numpy()[lva]
+    npv_va = A.realized_npv(amt_va, yv.astype(float), dd_va, rec_va)
     tau_dep, _ = best_tau(pv, npv_va)
     auc_dep = float(auc_dep)
 
