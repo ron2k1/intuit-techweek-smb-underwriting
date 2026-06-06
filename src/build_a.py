@@ -2,15 +2,27 @@
 
 Run:  python -m src.build_a   ->  submissions/submission_A_decisions.csv (13,306 rows)
 
-Five steps, each tracing back to reports/audit_findings.md:
-  1. Train PD on the LABELLED subset (approved & matured) over the shared features.
-  2. Calibrate (isotonic, internal CV) so predicted_pd is a real probability.
-  3. Quantify uncertainty: bootstrap-ensemble spread, then EXPLICITLY widen the
-     90% interval on the never-labelled reject-inference region (declined / no-feed).
-  4. Decide on PROFIT: pick the PD threshold that maximizes *realized* portfolio
-     profit on the labelled validation book under the real loan economics -- not
-     accuracy, not 0.5.
-  5. Emit one row per val+test applicant, ordered to match expected_ids/.
+The objective the team agreed on:
+  * MODEL QUALITY is measured by AUC-ROC (rank discrimination) -- the spine's
+    booster early-stops on roc_auc and we report AUC as the headline metric.
+  * THE DECISION maximizes realized PORTFOLIO VALUE / NPV -- we approve every
+    applicant whose calibrated PD is below the profit break-even threshold, where
+    the threshold is chosen to maximize realized NPV on the labelled validation
+    book under the SCORED loan economics (LGD = 0.30). (AUC ranks; NPV sets the cut.)
+
+Pipeline (each step traces to reports/audit_findings.md):
+  1. Feature set = shared predictors MINUS prior_* (the selection collider:
+     prior_decision is constant==1 on the labelled book; prior_underwriter_score
+     is truncated above its cut for approvals and out-of-range for declines, so
+     keeping it just forces extrapolation into the reject region we must price).
+  2. predicted_pd = average of a calibrated HGB and a logistic scorecard. Both are
+     genuine probabilities (so the mean stays ~calibrated for the profit math) but
+     make different ranking errors, so the blend lifts AUC.
+  3. Uncertainty: bootstrap-ensemble spread -> conformal-calibrated half-width,
+     EXPLICITLY widened in the never-labelled reject region (declined / no feed).
+  4. Decision: NPV break-even threshold (empirical argmax on the labelled val
+     book), cross-checked against the closed-form break-even PD.
+  5. One row per val+test applicant, ordered to expected_ids/.
 """
 from __future__ import annotations
 
@@ -18,144 +30,273 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from . import data as D
+from . import model as M
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SUB_DIR = REPO_ROOT / "submissions"
 EXPECTED_IDS = REPO_ROOT / "expected_ids" / "applicant_ids.txt"
 
-# --- loan economics (README / audit §8) -------------------------------------
-GOOD_MARGIN = 0.35 * 60 / 365 + 0.03   # ~0.0875 net on a fully repaid loan
-ORIG_FEE = 0.03                         # collected upfront, kept even on default
-Z90 = 1.6448536269514722               # 90% two-sided normal half-width factor
+# --- loan economics (README / audit section 8) ------------------------------
+INT_RATE = 0.35           # APR
+TERM_DAYS = 60            # mean loan term
+ORIG_FEE = 0.03           # collected upfront, kept even on default
+GOOD_MARGIN = INT_RATE * TERM_DAYS / 365 + ORIG_FEE   # ~0.0875 net on a repaid loan
 
-# --- uncertainty / OOD knobs (the ML PM tunes these for S_cal) --------------
+# --- loss given default (the SCORED economics, NOT the empirical trap) -------
+# The S_P&L scorer cannot use final_recovered_amount: it is post-outcome and BLANK
+# in test, so the scorer applies a fixed, standardized LGD. Per the challenge brief
+# LGD = 0.30 (recover 70% of principal on default). The ~9.3% recovery measurable on
+# TRAIN is the bait (audit s8): anchoring on it gives LGD ~ 0.88, a ~9% break-even,
+# and rejects a wide band of genuinely profitable loans. Default payoff per $ is
+# -LGD (fee/recovery folded in) so the break-even is EXACTLY GOOD_MARGIN/(GOOD_MARGIN+LGD).
+LGD = 0.30                    # loss given default, fraction of principal (brief)
+RECOVERY_RATE = 1.0 - LGD     # 0.70 recovered on default
+
+# --- Net Present Value (team's TOP-WEIGHTED metric) -------------------------
+# S_P&L scores REALIZED portfolio value. NPV additionally discounts each cashflow
+# by WHEN it lands -- a default loss at day d is smaller in PV than the same loss
+# today ("NPV based on default timing"). The APPROVE/DECLINE cut MAXIMIZES portfolio
+# NPV. At a 0% rate, NPV collapses exactly to S_P&L.
+DISCOUNT_RATE_ANNUAL = 0.10   # cost of capital / hurdle rate
+RECOVERY_DAYS = 90            # day-90 window close (cap on default-day timing)
+
+# --- uncertainty / OOD knobs ------------------------------------------------
 N_ENSEMBLE = 12
-MIN_HALFWIDTH = 0.03                    # floor so intervals aren't absurdly tight
-OOD_BOOST = 1.5                         # extra interval width in the unlabelled region
-OOD_SCORE_CUT = 0.273                   # prior_underwriter_score below = never-labelled
-RANDOM_SEED = 20260605
+OOD_SCORE_CUT = 0.273     # prior_underwriter_score below this = never-labelled region
+SEED = M.DEFAULT_SEED
+
+# Feature set for A: drop the prior-lender selection collider (see docstring).
+DROP_FOR_A = ["prior_underwriter_score", "prior_decision"]
 
 
-def _hgb(seed: int) -> HistGradientBoostingClassifier:
-    return HistGradientBoostingClassifier(
-        loss="log_loss",
-        learning_rate=0.05,
-        max_iter=400,
-        max_leaf_nodes=31,
-        min_samples_leaf=50,
-        l2_regularization=1.0,
-        early_stopping=True,
-        validation_fraction=0.15,
-        random_state=seed,
+def feats_for_a(feats: list[str]) -> list[str]:
+    return [c for c in feats if c not in DROP_FOR_A]
+
+
+def logit_pipe() -> "make_pipeline":
+    """Logistic scorecard: median-impute, standardize, L2 logistic regression.
+
+    A strong linear baseline -- on this data it rivals the booster, which tells us
+    the PD signal is largely additive. We blend it with the tree for the AUC lift.
+    """
+    return make_pipeline(
+        SimpleImputer(strategy="median"),
+        StandardScaler(),
+        LogisticRegression(max_iter=3000, C=0.5),
     )
 
 
-def realized_profit(amount: np.ndarray, default_flag: np.ndarray,
-                    recovered: np.ndarray) -> np.ndarray:
-    """Per-loan realized profit under the challenge economics.
+def realized_profit(amount: np.ndarray, default_flag: np.ndarray) -> np.ndarray:
+    """Per-loan realized P&L under the SCORED economics (README break-even spec).
 
-    Fully repaid -> amount * GOOD_MARGIN.
-    Defaulted    -> keep the 3% origination fee + ACTUAL recovery, lose the rest
-                    of principal. Uses real final_recovered_amount -- no LGD guess.
-    Rows where default_flag is NaN (unlabelled) return NaN and must be masked out.
+    Repaid    -> amount * GOOD_MARGIN   (interest + fee, net of principal).
+    Defaulted -> amount * (-LGD)        (lose LGD of principal; fee + recovery are
+                 folded into LGD per the brief -- the convention that makes the
+                 break-even exactly GOOD_MARGIN / (GOOD_MARGIN + LGD)).
+    NaN default_flag (unlabelled) -> NaN, must be masked out.
     """
     good = amount * GOOD_MARGIN
-    bad = amount * ORIG_FEE + np.nan_to_num(recovered, nan=0.0) - amount
+    bad = amount * (-LGD)
     out = np.where(default_flag == 1.0, bad, good)
     out[np.isnan(default_flag)] = np.nan
     return out
 
 
+def estimate_recovery_rate(tr: pd.DataFrame, ytr: pd.Series) -> float:
+    """EMPIRICAL recovery as a fraction of principal among defaulted matured train
+    loans. This is the ~9.3% TRAP value (audit s8) -- reported for the writeup as the
+    bait we deliberately did NOT use; the scored economics use the fixed LGD above."""
+    d = (ytr == 1).to_numpy()
+    rec = pd.to_numeric(tr["final_recovered_amount"], errors="coerce").to_numpy()
+    amt = pd.to_numeric(tr["requested_amount"], errors="coerce").to_numpy()
+    m = d & ~np.isnan(rec) & ~np.isnan(amt) & (amt > 0)
+    return float(np.clip(rec[m].sum() / amt[m].sum(), 0.0, 1.0))
+
+
+def theoretical_tau(lgd: float = LGD) -> float:
+    """Closed-form profit break-even PD (README). Approve iff E[profit] > 0.
+    Per dollar of principal:
+      repaid  (1-p): +GOOD_MARGIN
+      default (p)  : -lgd
+    Setting E=0:  tau* = GOOD_MARGIN / (GOOD_MARGIN + lgd).  (LGD=0.30 -> ~0.226)
+    """
+    return GOOD_MARGIN / (GOOD_MARGIN + lgd)
+
+
+# --- NPV: time-value of money, modeled on the DAILY ACH cashflow -------------
+def discount_factors(days, annual_rate: float = DISCOUNT_RATE_ANNUAL) -> np.ndarray:
+    """PV of $1 received `days` from now (vectorized)."""
+    return 1.0 / (1.0 + annual_rate) ** (np.asarray(days, float) / 365.0)
+
+
+def repay_npv_factor(annual_rate: float = DISCOUNT_RATE_ANNUAL) -> float:
+    """PV per $1 principal of a fully-repaid loan's INFLOWS. The loan repays via
+    TERM_DAYS equal daily ACH draws totalling (1 + INT_RATE*TERM/365). Cash arrives
+    THROUGH the term (not as a day-60 lump) -- the honest, and higher, NPV."""
+    draws = discount_factors(np.arange(1, TERM_DAYS + 1), annual_rate)
+    return (1.0 + INT_RATE * TERM_DAYS / 365.0) * draws.mean()
+
+
+def default_days_train(tr: pd.DataFrame, ytr: pd.Series) -> np.ndarray:
+    """Observed default-day distribution g(d) from matured train defaults. This is
+    the SAME timing signal Deliverable B uses -- it makes NPV 'based on default
+    timing': a later default crystallizes its LGD loss later, so it costs less in PV."""
+    d = (ytr == 1).to_numpy()
+    dtd = pd.to_numeric(tr["days_to_default"], errors="coerce").to_numpy()
+    dd = dtd[d & ~np.isnan(dtd)]
+    return np.clip(dd, 1, RECOVERY_DAYS)
+
+
+def realized_npv(amount, default_flag, days_to_default,
+                 annual_rate: float = DISCOUNT_RATE_ANNUAL) -> np.ndarray:
+    """Per-loan REALIZED NPV: discount each cashflow by WHEN it lands.
+    Repaid    -> daily-draw annuity PV (cash arrives through the 60-day term).
+    Defaulted -> the LGD loss, crystallized at the ACTUAL default day and discounted
+                 back (a later default is a smaller loss in PV). annual_rate=0
+                 reproduces realized_profit() exactly."""
+    good = amount * ((ORIG_FEE - 1.0) + repay_npv_factor(annual_rate))
+    dd = np.clip(np.nan_to_num(days_to_default, nan=float(RECOVERY_DAYS)), 1, RECOVERY_DAYS)
+    bad = amount * (-LGD) * discount_factors(dd, annual_rate)
+    out = np.where(default_flag == 1.0, bad, good)
+    out[np.isnan(default_flag)] = np.nan
+    return out
+
+
+def expected_npv_per_dollar(pd_hat, default_dd,
+                            annual_rate: float = DISCOUNT_RATE_ANNUAL):
+    """Forward expected NPV per $1 principal for default prob `pd_hat`, timing the
+    LGD loss by the train default-day distribution g(d). Used on the scored book
+    (test outcomes withheld). At annual_rate=0 the break-even equals theoretical_tau()."""
+    repay = (ORIG_FEE - 1.0) + repay_npv_factor(annual_rate)
+    default_pv = -LGD * discount_factors(default_dd, annual_rate).mean()
+    return (1.0 - pd_hat) * repay + pd_hat * default_pv
+
+
 def ood_flag(df: pd.DataFrame) -> np.ndarray:
-    """1 where the model extrapolates beyond labelled support (audit §1, §4)."""
-    below_cut = df["prior_underwriter_score"].to_numpy() < OOD_SCORE_CUT
+    """1 where the model extrapolates beyond labelled support (audit 1, 4)."""
+    below_cut = pd.to_numeric(df["prior_underwriter_score"], errors="coerce").to_numpy() < OOD_SCORE_CUT
     no_feed = df["no_bank_feed"].to_numpy().astype(bool)
-    return (below_cut | no_feed).astype(float)
+    return (np.nan_to_num(below_cut, nan=1.0).astype(bool) | no_feed).astype(float)
 
 
 def main() -> None:
     SUB_DIR.mkdir(exist_ok=True)
-    tr, feats = D.load_features("train")
+    tr, feats_all = D.load_features("train")
     va, _ = D.load_features("val")
     te, _ = D.load_features("test")
+    feats = feats_for_a(feats_all)
+    cat_idx = D.categorical_indices(feats)
 
     ytr = D.target_vector(tr)
-    lab = ytr.notna().to_numpy()                       # labelled = approved & matured
+    lab = ytr.notna().to_numpy()
     Xtr = D.to_model_matrix(tr, feats).to_numpy()
     Xva = D.to_model_matrix(va, feats).to_numpy()
     Xte = D.to_model_matrix(te, feats).to_numpy()
-    Xtr_lab, ytr_lab = Xtr[lab], ytr[lab].astype(int).to_numpy()
-    print(f"[1] train labelled={len(ytr_lab)}  features={len(feats)}  "
-          f"base default_rate={ytr_lab.mean():.4f}")
+    Xtr_l, ytr_l = Xtr[lab], ytr[lab].astype(int).to_numpy()
+    print(f"[1] labelled train={len(ytr_l)}  features={len(feats)} (dropped {DROP_FOR_A})  "
+          f"cat_idx={cat_idx}  base default={ytr_l.mean():.4f}")
 
-    # --- 2. calibrated PD model (isotonic, internal 5-fold) ---
-    cal = CalibratedClassifierCV(_hgb(RANDOM_SEED), method="isotonic", cv=5)
-    cal.fit(Xtr_lab, ytr_lab)
-    pd_va = cal.predict_proba(Xva)[:, 1]
-    pd_te = cal.predict_proba(Xte)[:, 1]
-    print(f"[2] calibrated PD  mean(val)={pd_va.mean():.4f}  mean(test)={pd_te.mean():.4f}")
+    # --- 2. predicted_pd = blend(calibrated HGB, logistic scorecard) ---
+    hgb = M.fit_calibrated(Xtr_l, ytr_l, cat_idx, seed=SEED, cv=5, scoring="roc_auc")
+    lg = logit_pipe().fit(Xtr_l, ytr_l)
+    pd_hgb_va, pd_hgb_te = hgb.predict_proba(Xva)[:, 1], hgb.predict_proba(Xte)[:, 1]
+    pd_lg_va, pd_lg_te = lg.predict_proba(Xva)[:, 1], lg.predict_proba(Xte)[:, 1]
+    pd_va = 0.5 * (pd_hgb_va + pd_lg_va)
+    pd_te = 0.5 * (pd_hgb_te + pd_lg_te)
 
-    # --- 3. bootstrap-ensemble spread for the 90% interval ---
-    rng = np.random.default_rng(RANDOM_SEED)
-    n = len(Xtr_lab)
-    ens_va = np.empty((N_ENSEMBLE, len(Xva)))
-    ens_te = np.empty((N_ENSEMBLE, len(Xte)))
-    for k in range(N_ENSEMBLE):
-        idx = rng.integers(0, n, n)                    # bootstrap resample
-        m = _hgb(RANDOM_SEED + 1 + k).fit(Xtr_lab[idx], ytr_lab[idx])
-        ens_va[k] = m.predict_proba(Xva)[:, 1]
-        ens_te[k] = m.predict_proba(Xte)[:, 1]
-    std_va, std_te = ens_va.std(0), ens_te.std(0)
-
-    # --- 4. profit-maximizing threshold on the labelled validation book ---
+    # --- headline AUC-ROC on the labelled validation book ---
     yva = D.target_vector(va)
     lab_va = yva.notna().to_numpy()
-    pr = realized_profit(va["requested_amount"].to_numpy(),
-                         yva.to_numpy(),
-                         va["final_recovered_amount"].to_numpy())
-    approve_all = np.nansum(pr[lab_va])
+    yv = yva[lab_va].astype(int).to_numpy()
+    auc = roc_auc_score(yv, pd_va[lab_va])
+    auc_hgb = roc_auc_score(yv, pd_hgb_va[lab_va])
+    auc_lg = roc_auc_score(yv, pd_lg_va[lab_va])
+    pr = average_precision_score(yv, pd_va[lab_va])
+    brier = brier_score_loss(yv, pd_va[lab_va])
+    print(f"[2] AUC-ROC(val)={auc:.4f}  [HGB={auc_hgb:.4f} logit={auc_lg:.4f} blend wins]  "
+          f"PR-AUC={pr:.4f}  Brier={brier:.4f}  meanPD val={pd_va.mean():.4f}")
+
+    # --- 3. bootstrap spread -> conformal interval (widened OOD) ---
+    ens = M.bootstrap_pd(Xtr_l, ytr_l, [Xva, Xte], cat_idx, seed=SEED,
+                         n_models=N_ENSEMBLE, scoring="roc_auc")
+    std_va, std_te = ens[0].std(0), ens[1].std(0)
+    lam = M.conformal_lambda(pd_va[lab_va], std_va[lab_va], yv)
+    ood_va, ood_te = ood_flag(va), ood_flag(te)
+    lo_va, hi_va = M.make_interval(pd_va, std_va, lam, ood_va)
+    lo_te, hi_te = M.make_interval(pd_te, std_te, lam, ood_te)
+    cov = float(((yv >= lo_va[lab_va]) & (yv <= hi_va[lab_va])).mean())  # sanity only
+    print(f"[3] conformal lambda={lam:.3f}  median half-width="
+          f"{np.median((hi_va-lo_va)/2):.3f}  OOD rate(test)={ood_te.mean():.3f}")
+
+    # --- 4. DECISION threshold = MAXIMIZE PORTFOLIO NPV (team's top metric) ---
+    amt_va = va["requested_amount"].to_numpy()
+    dd_va = pd.to_numeric(va["days_to_default"], errors="coerce").to_numpy()
+    emp_recovery = estimate_recovery_rate(tr, ytr)   # ~0.093 empirical = the trap
+    default_dd = default_days_train(tr, ytr)
+
+    npv_va = realized_npv(amt_va, yva.to_numpy(), dd_va)   # timing-aware NPV, LGD=0.30
+    profit_va = realized_profit(amt_va, yva.to_numpy())    # undiscounted S_P&L
+
+    # Approve below the PD that MAXIMIZES realized portfolio NPV on the labelled
+    # book. NOT 0.5 -- a 0.5 cut funds ~everyone; with LGD=0.30 the break-even is ~22.6%.
     cands = np.unique(np.round(pd_va[lab_va], 4))
-    best_tau, best_profit = cands[-1] + 1e-6, -np.inf
-    for tau in cands:
-        sel = lab_va & (pd_va < tau)
-        tot = np.nansum(pr[sel])
-        if tot > best_profit:
-            best_profit, best_tau = tot, tau
-    lift = best_profit - approve_all
-    print(f"[4] tau*={best_tau:.4f}  realized val profit=${best_profit:,.0f}  "
-          f"(approve-all=${approve_all:,.0f}, lift=${lift:,.0f})")
+    tau, best = cands[-1] + 1e-6, -np.inf
+    for tc in cands:
+        tot = np.nansum(npv_va[lab_va & (pd_va < tc)])
+        if tot > best:
+            best, tau = tot, tc
+    tau_th = theoretical_tau()                # closed-form break-even (cross-check)
 
-    # --- 5. assemble all 13,306 rows ---
+    appr = lab_va & (pd_va < tau)
+    npv_cut, npv_all = np.nansum(npv_va[appr]), np.nansum(npv_va[lab_va])
+    pl_cut, funded = np.nansum(profit_va[appr]), np.nansum(amt_va[appr])
+    print(f"[4] LGD={LGD:.2f} (recover {RECOVERY_RATE:.0%}; empirical train recovery={emp_recovery:.3f}=trap)  "
+          f"discount={DISCOUNT_RATE_ANNUAL:.0%}/yr  default-day med={np.median(default_dd):.0f}  "
+          f"tau_NPV={tau:.4f} (break-even~{tau_th:.4f})  approve-rate(val)={appr.sum()/lab_va.sum():.3f}")
+    print(f"    [labelled val] NPV @cut=${npv_cut:,.0f} vs approve-all ${npv_all:,.0f} "
+          f"(lift ${npv_cut-npv_all:,.0f})  P&L @cut=${pl_cut:,.0f}  "
+          f"NPV-margin={npv_cut / funded:.2%}")
+
+    # --- 5. assemble all applicants, ordered to expected_ids ---
     out = pd.DataFrame({
-        "applicant_id": pd.concat([va["applicant_id"], te["applicant_id"]],
-                                  ignore_index=True),
+        "applicant_id": pd.concat([va["applicant_id"], te["applicant_id"]], ignore_index=True),
         "predicted_pd": np.clip(np.concatenate([pd_va, pd_te]), 0.0, 1.0),
+        "pd_lower_90": np.concatenate([lo_va, lo_te]),
+        "pd_upper_90": np.concatenate([hi_va, hi_te]),
     })
-    std = np.concatenate([std_va, std_te])
-    ood = np.concatenate([ood_flag(va), ood_flag(te)])
-    halfwidth = np.maximum(Z90 * std, MIN_HALFWIDTH) * (1.0 + OOD_BOOST * ood)
-    out["pd_lower_90"] = np.clip(out["predicted_pd"] - halfwidth, 0.0, 1.0)
-    out["pd_upper_90"] = np.clip(out["predicted_pd"] + halfwidth, 0.0, 1.0)
-    out["decision"] = (out["predicted_pd"] < best_tau).astype(int)
-
-    # order exactly to expected_ids (validator checks the ID set; be exact)
-    order = pd.read_csv(EXPECTED_IDS, header=None)[0].tolist()
-    out = out.set_index("applicant_id").reindex(order).reset_index()
-    out = out.rename(columns={"index": "applicant_id"})
-    assert out["applicant_id"].notna().all() and not out.isna().any().any(), \
-        "row/ID mismatch vs expected_ids"
+    out["decision"] = (out["predicted_pd"] < tau).astype(int)
+    order = pd.read_csv(EXPECTED_IDS, header=None)[0].astype(str).tolist()
+    out = out.set_index(out["applicant_id"].astype(str)).reindex(order).reset_index(drop=True)
+    out["applicant_id"] = order
+    assert not out.isna().any().any(), "row/ID mismatch vs expected_ids"
     out = out[["applicant_id", "decision", "predicted_pd", "pd_lower_90", "pd_upper_90"]]
 
     dest = SUB_DIR / "submission_A_decisions.csv"
     out.to_csv(dest, index=False)
-    appr = out["decision"].mean()
-    print(f"[5] wrote {dest.name}: {len(out)} rows  approve_rate={appr:.3f}  "
-          f"PD[min/med/max]={out.predicted_pd.min():.3f}/"
-          f"{out.predicted_pd.median():.3f}/{out.predicted_pd.max():.3f}")
+    print(f"[5] wrote {dest.name}: {len(out)} rows  approve_rate={out.decision.mean():.3f}  "
+          f"PD[min/med/max]={out.predicted_pd.min():.3f}/{out.predicted_pd.median():.3f}/"
+          f"{out.predicted_pd.max():.3f}")
+
+    # --- 5b. forward EXPECTED NPV on the approved val+test book (scored set) ---
+    # outcomes are withheld on test, so we price each approved loan by predicted PD
+    # x the train default-timing distribution. Reported in $ / margin% / per-loan so
+    # the number is comparable however the metric is normalized.
+    pd_cat = np.concatenate([pd_va, pd_te])
+    amt_cat = np.concatenate([amt_va, te["requested_amount"].to_numpy()])
+    enpv = amt_cat * expected_npv_per_dollar(pd_cat, default_dd)
+    appr_cat = pd_cat < tau
+    e_total, funded_all = float(enpv[appr_cat].sum()), float(amt_cat[appr_cat].sum())
+    n_appr = int(appr_cat.sum())
+    print(f"[5b] EXPECTED NPV (approved val+test): ${e_total:,.0f}  "
+          f"margin={e_total / funded_all:.2%}  per-loan=${e_total / max(n_appr, 1):,.0f}  "
+          f"(funded ${funded_all:,.0f} over {n_appr} loans)")
 
 
 if __name__ == "__main__":
