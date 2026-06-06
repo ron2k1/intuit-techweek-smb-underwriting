@@ -14,7 +14,7 @@ The practical implication is that a high-AUROC or high-headline-NPV model can st
 
 | Score component | Weight | What judges care about | Current proxy metric | Current status | Biggest risk | Next action |
 |---|---:|---|---:|---|---|---|
-| `S_P&L` | 30% | Realized portfolio value from A decisions | Active labeled-val NPV: `$3.868M`; 9,005 approved; 3,104 prior-declined approvals | Strong but not final | Prior-declined region has no labels, so headline NPV can be optimistic | Keep LightGBM/no-prior-score active unless sensitivity audit argues against it |
+| `S_P&L` | 30% | Realized portfolio value from A decisions | Active labeled-val NPV: `$3.868M`; 8,477 approved; 2,576 prior-declined approvals | Strong but not final | Prior-declined region has no labels, so headline NPV can be optimistic | Keep LightGBM/no-prior-score guardrail active unless sensitivity audit argues against it |
 | `S_traj` | 25% | Accuracy of B cumulative default trajectories on our approved set | Active B CDR MAE: `0.0150`; week-13 mean pred `0.1383` vs actual `0.1327` | Good, rebuilt for current A | Cohort 13 tail is overpredicted | Reduce cohort 13 overprediction or widen interval if time |
 | `S_cal` | 20% | 90% intervals on A PD and B trajectories contain truth without being too wide | Active A AUROC `0.744`, log loss `0.436`, Brier `0.137`; PD interval bin coverage `0.900` | Partially ready | AUROC is lower than the old blend; calibration/interval defense matters more | Report coverage by PD bin, prior-decision stratum, cohort week, and approved set |
 | `S_C` | 10% | Counterfactual PDs match true intervention effects, not naive re-prediction | 900 / 900 C queries generated; mean CF PD `0.293`; 74 tail-support queries | File-ready | C model is still assumption-driven because true intervention labels are hidden | Defend DAG-safe feature handling, shrinkage, support checks, and interval widening |
@@ -24,7 +24,7 @@ The practical implication is that a high-AUROC or high-headline-NPV model can st
 
 | Deliverable | Required artifact | Current artifact | Completeness | Readiness metric | Current value | Score impact |
 |---|---|---|---:|---|---:|---|
-| A | `submission_A_decisions.csv` | Present | 100% file-ready | Approved applicants | 9,005 | Drives `S_P&L`, B denominator, and A interval calibration |
+| A | `submission_A_decisions.csv` | Present | 100% file-ready | Approved applicants | 8,477 | Drives `S_P&L`, B denominator, and A interval calibration |
 | A | PD and 90% PI columns | Present | Needs final stratified interval audit | AUROC / log loss / Brier | `0.744 / 0.436 / 0.137` | Drives `S_cal`; not directly enough for `S_P&L` |
 | B | `submission_B_trajectory.csv` | Present | 100% file-ready for current A | Cohort-age rows | 169 | Drives `S_traj` and B interval calibration |
 | B | CDR forecasts and intervals | Present | Needs final coverage table | CDR MAE | `0.0150` | Strong enough to keep unless A changes |
@@ -50,7 +50,7 @@ This table is the better comparison to use during the hackathon because it ties 
 
 | Candidate / policy | `S_P&L` proxy | `S_traj` proxy | `S_cal` proxy | `S_C` readiness | `S_write` readiness | Hackathon risk | Recommendation |
 |---|---:|---:|---:|---|---|---|---|
-| Active Steven policy: LightGBM no-prior-score + exact NPV threshold | Labeled-val NPV `$3.868M`; 9,005 approved; 3,104 prior-declined approvals | B MAE `0.0150` on current approved set | AUROC `0.744`; log loss `0.436`; Brier `0.137`; PD bin interval coverage `0.900` | 900 / 900 queries generated | Missing | Strong A/B/C, but writeup still absent | Keep active; finish D before more A tinkering |
+| Active Steven policy: LightGBM no-prior-score + exact NPV threshold + prior-declined guardrail | Labeled-val NPV `$3.868M`; 8,477 approved; 2,576 prior-declined approvals | B MAE `0.0150` on current approved set | AUROC `0.744`; log loss `0.436`; Brier `0.137`; PD bin interval coverage `0.900` | 900 / 900 queries generated | Missing | Strong A/B/C, but writeup still absent | Keep active; finish D before more A tinkering |
 | Previous direct-NPV blend | Labeled-val NPV `$3.835M`; headline expected NPV `$14.459M`; 9,199 approved | Old B MAE `0.0145`; stale after A switch | AUROC `0.755`; log loss `0.431`; Brier `0.135` | Not tied to current package | Missing | Better probability metrics but lower NPV and stale current B | Keep as fallback only |
 | HGB no-prior-score challenger | Labeled-val NPV `$3.835M`; 9,036 approved; 3,115 prior-declined approvals | Not rebuilt yet | AUROC `0.753`; log loss `0.431`; Brier `0.136` | Missing | Missing | Near-tie with active, no clear score lift | Useful robustness check, not a clear replacement |
 | Ayush branch, current clone | Slide-formula labeled-val NPV `$3.839M`; headline `$10.387M`; avoids LGD trap | Unknown locally | Uses prior score; branch model is HGB bootstrap ensemble | Unknown | Unknown | Conservative on prior-declined region; may leave `S_P&L` on table | Good sanity benchmark for NPV formula and LGD |
@@ -63,7 +63,7 @@ Keep this thinner table for diagnosis, not for final strategy ranking.
 
 | Person / policy | Model family | LGD/economics assumption | Break-even decision rule | Keeps prior-underwriter score | Funds prior-declined region | Recovery trap? | Main lesson |
 |---|---|---|---|---|---|---|---|
-| Steven active | LightGBM no-prior-score | Exact brief cash-flow formula via active timing/recovery curves | Tuned NPV margin threshold `0.00938` | No | Yes | Avoided | Best current A/B/C package, but D missing |
+| Steven active | LightGBM no-prior-score | Exact brief cash-flow formula via active timing/recovery curves | Tuned NPV margin threshold `0.00938` plus prior-declined margin floor `0.03` | No | Yes, with guardrail | Avoided | Best current A/B/C package, but D missing |
 | Previous Steven blend | Calibrated HGB/logistic + direct NPV blend | Exact brief cash-flow formula with timing/recovery | NPV margin sign with buffer, not flat PD | Mostly avoids direct prior-score dependence in active comparison | Yes | Avoided | Useful fallback with better AUROC/log loss |
 | Ayush | HGB bootstrap ensemble | `LGD = 0.30` amortization-aware shorthand | Flat break-even PD around `0.226` | Yes | No | Avoided | Very good verifiable NPV; conservative reject-region stance |
 | Ronil | HGB + logistic blend | `LGD = 0.30` amortization-aware shorthand | Flat break-even PD around `0.226` | No | Yes | Avoided | Aggressive reject-region funding needs sensitivity proof |
@@ -77,7 +77,7 @@ Use this as the working burndown table.
 |---|---:|---:|---:|---|
 | A file validity | Expected applicant rows | 13,306 applicants | 13,306, validator clean | Already file-ready |
 | A economics | Labeled-val realized NPV | `$3.868M` active, `$3.835M` previous blend | Freeze unless sensitivity audit rejects it | Run reject-region sensitivity if time |
-| A approval policy | Test approval rate | `67.6%` active, `69.0%` previous blend | Defensible by NPV sign and support audit | Avoid arbitrary flat PD threshold |
+| A approval policy | Test approval rate | `63.7%` active, `69.0%` previous blend | Defensible by NPV sign and support audit | Avoid arbitrary flat PD threshold |
 | B file validity | Expected cohort-age rows | 169 | 169, monotone, validator clean | Already file-ready for active A |
 | B accuracy | CDR MAE | `0.0150` | Keep near current level after any A rebuild | Rebuild B if A changes |
 | B tail/cohort risk | Worst absolute CDR error | `0.0677`, cohort 13 | Reduce if time | Recalibrate cohort 13 or widen interval |

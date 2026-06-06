@@ -33,6 +33,7 @@ DROP_PRIOR_SCORE_PROXIES = {
     "selection_support_index",
 }
 MIN_PD_INTERVAL_HALF_WIDTH = 0.06
+PRIOR_DECLINED_MIN_MARGIN = 0.03
 
 
 def time_split_labeled(train: pd.DataFrame, train_fraction: float = 0.80) -> tuple[np.ndarray, np.ndarray]:
@@ -157,8 +158,16 @@ def main() -> None:
     labeled_val = validation["default_flag"].notna().to_numpy()
     realized_val = realized_npv(validation.loc[labeled_val])
     threshold, sweep = choose_threshold(val_margin[labeled_val], realized_val)
-    val_decision = (val_margin > threshold).astype(int)
-    test_decision = (test_margin > threshold).astype(int)
+    val_prior_declined = validation["prior_decision"].to_numpy() == 0
+    test_prior_declined = test["prior_decision"].to_numpy() == 0
+    val_decision = (
+        (val_margin > threshold)
+        & (~val_prior_declined | (val_margin > PRIOR_DECLINED_MIN_MARGIN))
+    ).astype(int)
+    test_decision = (
+        (test_margin > threshold)
+        & (~test_prior_declined | (test_margin > PRIOR_DECLINED_MIN_MARGIN))
+    ).astype(int)
 
     backup = archive_dir / "submission_A_decisions_before_lightgbm_no_prior.csv"
     if not backup.exists():
@@ -196,6 +205,7 @@ def main() -> None:
     summary = {
         "policy": "lightgbm_no_prior_score",
         "threshold": threshold,
+        "prior_declined_min_margin": PRIOR_DECLINED_MIN_MARGIN,
         "validation_labeled_realized_npv": float(realized_val[val_decision[labeled_val] == 1].sum()),
         "validation_labeled_approved": int(val_decision[labeled_val].sum()),
         "validation_labeled_approval_rate": float(val_decision[labeled_val].mean()),
@@ -218,7 +228,7 @@ def main() -> None:
         },
         "validation_interval_coverage_90": coverage,
         "pd_interval_half_width_floor": MIN_PD_INTERVAL_HALF_WIDTH,
-        "replaced_policy_note": "Promoted from model-family NPV bakeoff; threshold selected on labeled validation.",
+        "replaced_policy_note": "Promoted from model-family NPV bakeoff; prior-declined guardrail reduces unverified reject-region exposure.",
     }
     sweep.to_csv(report_dir / "lightgbm_no_prior_policy_threshold_sweep.csv", index=False)
     bin_table.to_csv(report_dir / "lightgbm_no_prior_pd_interval_bins.csv", index=False)

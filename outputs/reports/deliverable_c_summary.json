@@ -19,12 +19,12 @@
     "mean_width": 0.07532987081926595,
     "median_width": 0.05259870713980158
   },
-  "mean_predicted_pd_cf": 0.2931845757884327,
-  "mean_interval_width": 0.10269929875620233,
+  "mean_predicted_pd_cf": 0.2931877672764234,
+  "mean_interval_width": 0.1027968641737925,
   "outside_min_max_queries": 0,
   "outside_p01_p99_queries": 74,
   "unseen_category_queries": 0,
-  "historical_or_proxy_queries": 165,
+  "historical_or_proxy_queries": 174,
   "direct_intervention_queries": 726,
   "excluded_prior_policy_tokens": [
     "prior_underwriter",

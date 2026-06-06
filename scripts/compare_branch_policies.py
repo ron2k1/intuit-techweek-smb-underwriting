@@ -60,7 +60,7 @@ BRANCHES = [
         "branch": "steven",
         "submission": WT / "steven" / "outputs" / "submission" / "submission_A_decisions.csv",
         "code_root": WT / "steven",
-        "model": "LightGBM no-prior-score PD + hazard/recovery NPV policy",
+        "model": "LightGBM no-prior-score PD + guarded hazard/recovery NPV policy",
         "lgd_assumption": "brief-faithful cash-flow formula",
         "break_even_pd": math.nan,
     },

@@ -125,6 +125,7 @@ def classify_intervention(
         "application_context",
         "bank_feed",
         "self_reported",
+        "bureau_credit",
     }:
         return "historical_or_proxy", 0.35, 0.035
     return "ambiguous", 0.50, 0.025

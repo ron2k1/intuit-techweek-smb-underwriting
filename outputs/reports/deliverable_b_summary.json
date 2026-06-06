@@ -3,9 +3,9 @@
   "validation_labeled_realized_npv": 3867998.4575711302,
   "validation_labeled_approved": 2012,
   "validation_labeled_approval_rate": 0.7887103096824775,
-  "validation_all_approval_rate": 0.6776564936511472,
-  "test_approval_rate": 0.6763071339457866,
-  "approved_eval_total": 9005,
+  "validation_all_approval_rate": 0.6375584762753397,
+  "test_approval_rate": 0.6368379267324487,
+  "approved_eval_total": 8477,
   "submission_b_rows": 169,
-  "submission_b_week13_mean": 0.1531034165728773
+  "submission_b_week13_mean": 0.1437874365179307
 }

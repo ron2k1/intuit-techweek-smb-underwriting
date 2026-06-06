@@ -84,9 +84,9 @@ scripts/apply_lightgbm_no_prior_policy.py
 scripts/build_deliverable_b.py --use-existing-a-decisions
 ```
 
-This improves labeled-validation NPV from `$3.835M` to `$3.868M` and reduces approved total from `9,199` to `9,005`. Because the single LightGBM model has less ensemble dispersion, A's 90% PD intervals now use a conservative `0.06` half-width floor; this restores labeled-validation bin-level interval coverage to `0.90`.
+This improves labeled-validation NPV from `$3.835M` to `$3.868M`. A prior-declined guardrail then reduces approved total to `8,477` and prior-declined approvals to `2,576` while preserving labeled-validation NPV. Because the single LightGBM model has less ensemble dispersion, A's 90% PD intervals now use a conservative `0.06` half-width floor; this restores labeled-validation bin-level interval coverage to `0.90`.
 
-The largest unresolved uncertainty remains the prior-declined region with no labels. The promoted policy still funds `3,104` prior-declined applicants, so the writeup should frame that as model-based extrapolation with uncertainty, not as directly verified profit.
+The largest unresolved uncertainty remains the prior-declined region with no labels. The promoted policy still funds `2,576` prior-declined applicants, so the writeup should frame that as model-based extrapolation with uncertainty, not as directly verified profit.
 
 ## Screenshot Metric Reconciliation
 
@@ -110,7 +110,7 @@ Ayush slide-formula headline NPV:      $10.39M
 Ayush slide-formula verifiable NPV:    $3.84M
 Steven previous slide-formula headline NPV:     $14.46M
 Steven previous slide-formula verifiable NPV:   $3.83M
-Steven promoted LightGBM verifiable NPV:         $3.87M
+Steven promoted guarded LightGBM verifiable NPV: $3.87M
 ```
 
 Ronil's current cloned branch does not reproduce the screenshot's `~$15M`. The current branch produces about `$10.30M` under the slide formula and `$6.85M` under the fixed-LGD reference for 5,327 funded loans. The screenshot likely used an older branch state or a more aggressive trust-policy mode in the unlabelled prior-declined region.

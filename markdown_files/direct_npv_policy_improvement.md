@@ -91,6 +91,7 @@ The active submission has now been promoted to:
 
 ```text
 LightGBM + no_prior_score -> expected NPV via timing/recovery curves -> threshold 0.009380
+prior-declined applicants require expected NPV margin > 0.030000
 ```
 
 Promotion script:
@@ -103,14 +104,14 @@ Current active A/B results:
 
 ```text
 labeled-validation NPV:  $3.868M
-approved total:          9,005 / 13,306
-validation approval:     67.77%
-test approval:           67.63%
-prior-declined funded:   3,104
+approved total:          8,477 / 13,306
+validation approval:     63.76%
+test approval:           63.68%
+prior-declined funded:   2,576
 PD interval coverage:    0.90 bin-level coverage on labeled validation
 ```
 
-The NPV lift over the previous direct-NPV blend is about `$33K`; the lift over the decomposed NPV-only policy is about `$79K`.
+The verifiable NPV lift over the previous direct-NPV blend is about `$33K`; the lift over the decomposed NPV-only policy is about `$79K`. The guardrail sacrifices model-estimated headline NPV to reduce exposure where outcomes are unobserved.
 
 ## Why This Is A Reasonable Move
 
