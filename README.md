@@ -55,8 +55,10 @@ pip install -r requirements.txt
 # Get the data (not committed): drop dataset-compressed.zip into dataset/ then:
 python scripts/setup_data.py
 
-# Build Deliverable A:
+# Build the deliverables (order matters -- B reads A's output):
 python -m src.build_a          # writes submissions/submission_A_decisions.csv
+python -m src.build_b          # writes submissions/submission_B_trajectory.csv (reads A's output)
+python -m src.build_c          # writes submissions/submission_C_counterfactuals.csv
 
 # Validate before upload (must print PASS):
 python validate_submission.py submissions/
