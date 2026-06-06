@@ -60,10 +60,47 @@ def hgb(seed: int, cat_idx: list[int] | None = None,
     )
 
 
+def lgbm(seed: int, cat_idx: list[int] | None = None, scoring: str | None = None):
+    """A SECOND, algorithmically-distinct gradient booster for the rank blend.
+
+    LightGBM grows leaf-wise (best-first) where sklearn's HistGradientBoosting grows
+    depth-first/level-balanced; on the same features they make DIFFERENT ranking errors,
+    so a convex blend of the two lifts AUC-ROC beyond either alone (the one axis the
+    competitive review found us trailing on). Regularized to MATCH the HGB leg
+    (400 trees, lr 0.05, ~31 leaves, min_child 50, L2 1.0) so neither leg is sharper than
+    the other -- the same "smooth surface that extrapolates sanely into the reject region"
+    rationale as hgb(). `deterministic`+single-threaded so the shipped PD is reproducible.
+
+    cat_idx/scoring are accepted for signature parity with hgb() but LightGBM reads the
+    int-coded categoricals as numeric here (same as the logistic leg) -- declaring float
+    categoricals to LightGBM errors, and the blend's diversity comes from the algorithm,
+    not from re-handling the categoricals a third way.
+    """
+    from lightgbm import LGBMClassifier
+
+    return LGBMClassifier(
+        objective="binary",
+        n_estimators=400,
+        learning_rate=0.05,
+        num_leaves=31,
+        min_child_samples=50,
+        reg_lambda=1.0,
+        subsample=0.8,
+        subsample_freq=1,
+        colsample_bytree=0.8,
+        random_state=seed,
+        n_jobs=1,
+        deterministic=True,
+        force_row_wise=True,
+        verbose=-1,
+    )
+
+
 def fit_calibrated(X: np.ndarray, y: np.ndarray, cat_idx: list[int] | None = None,
                    seed: int = DEFAULT_SEED, cv: int = 5,
                    scoring: str = "loss",
-                   sample_weight: np.ndarray | None = None) -> CalibratedClassifierCV:
+                   sample_weight: np.ndarray | None = None,
+                   estimator=None) -> CalibratedClassifierCV:
     """Probability-calibrated PD model (isotonic, internal CV).
 
     Isotonic (not Platt) because the selection bias bends the reliability curve
@@ -75,8 +112,13 @@ def fit_calibrated(X: np.ndarray, y: np.ndarray, cat_idx: list[int] | None = Non
     weights so the calibrated LEVEL tracks the recent, higher-default regime the
     walk-forward backtest found drifting upward -- ranking is unchanged, only the
     probability level is corrected.
+
+    `estimator` (optional) swaps in a different base learner (e.g. model.lgbm(...))
+    while keeping the SAME isotonic-CV calibration wrapper, so every blend leg is
+    calibrated identically and the convex average stays a genuine probability.
     """
-    cal = CalibratedClassifierCV(hgb(seed, cat_idx, scoring), method="isotonic", cv=cv)
+    base = estimator if estimator is not None else hgb(seed, cat_idx, scoring)
+    cal = CalibratedClassifierCV(base, method="isotonic", cv=cv)
     cal.fit(X, y, sample_weight=sample_weight)
     return cal
 
