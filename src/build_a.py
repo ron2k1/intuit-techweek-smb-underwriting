@@ -9,10 +9,10 @@ The objective the team agreed on:
     whose calibrated PD is below the CLOSED-FORM profit break-even threshold
     GOOD_MARGIN/(GOOD_MARGIN - b), where b=E[NPV_default]/$ comes from the brief's
     EXACT per-loan NPV (daily draws collected before default + real recovery), NOT an
-    assumed flat LGD. Empirically b~-0.256 (implied LGD 0.256) -> break-even ~0.255. In the
-    never-labelled reject region (OOD) the PD is an extrapolation, so there we
-    require the PESSIMISTIC conformal upper-90 PD to clear break-even (trust-but-
-    verify, step 4). We deliberately do NOT use the val-argmax tau: the walk-forward
+    assumed flat LGD. Empirically b~-0.256 (implied LGD 0.256) -> break-even ~0.255. The
+    deep never-labelled reject region (prior-declined, OOD) has no labels to validate any
+    PD bound, so we ABSTAIN there entirely (decline-all-deep, step 4) rather than fund an
+    unvalidated extrapolation. We deliberately do NOT use the val-argmax tau: the walk-forward
     backtest (src/backtest.py) showed it is OVERFIT (swings 0.135-0.229 across
     folds), and once PDs are de-drifted it climbs back to the break-even anyway.
     (AUC ranks; the closed-form break-even sets the cut.)
@@ -29,14 +29,18 @@ Pipeline (each step traces to reports/audit_findings.md):
      make different ranking errors, so the blend lifts AUC.
   3. Uncertainty: bootstrap-ensemble spread -> conformal-calibrated half-width,
      EXPLICITLY widened in the never-labelled reject region (declined / no feed).
-  4. Decision (TRUST-BUT-VERIFY): in-distribution applicants are approved when the
-     point PD clears the closed-form break-even; OOD applicants (prior-declined /
-     no-feed, where the PD is an extrapolation) must clear it on the PESSIMISTIC
-     conformal upper-90 bound instead. This funds the censored region only where
-     even our uncertainty-aware estimate says it pays -- capturing the verifiable
-     declined-region profit (realized default 0.144 << break-even) while abstaining
-     on the unverifiable deep-reject tail the data cannot vouch for. The overfit val
-     argmax is still computed and printed as a comparison, never as the decision.
+  4. Decision (TRUST-BUT-VERIFY, max risk management): in-distribution and shallow-OOD
+     applicants (prior-APPROVED => an outcome was observed in their region) are approved
+     when the point PD clears the closed-form break-even. DEEP-OOD applicants (prior-
+     DECLINED and below the score cut / no feed) are DECLINED OUTRIGHT: their region has
+     ZERO labelled rows, so the conformal interval there is calibrated entirely off the
+     labelled book and is NOT a coverage-validated bound -- a 90% claim on the deep tail
+     has no evidence behind it. Rather than underwrite ~1,100 applicants on an unvalidated
+     extrapolation we abstain on the whole deep tail, forgoing its model-expected upside to
+     eliminate its unvalidated risk. (We earlier gated deep-OOD on the pessimistic upper-90;
+     the adversarial review showed that bound is not coverage-validated in a label-free
+     region, so we abstain instead -- the honest conservative call.) The overfit val argmax
+     is still computed and printed as a comparison, never as the decision.
   5. One row per val+test applicant, ordered to expected_ids/.
 """
 from __future__ import annotations
@@ -45,6 +49,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.feature_selection import f_classif
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
@@ -112,6 +117,48 @@ def feats_for_a(feats: list[str]) -> list[str]:
     return [c for c in feats if c not in DROP_FOR_A]
 
 
+# |Pearson r| above which two features are treated as redundant and one is dropped.
+CORR_DROP_THRESHOLD = 0.95
+
+
+def select_features_for_a(tr: pd.DataFrame, feats: list[str], ytr: pd.Series,
+                         lab: np.ndarray, threshold: float = CORR_DROP_THRESHOLD) -> list[str]:
+    """Collinearity prune: correlation finds the redundant pair, an F-test picks the keeper.
+
+    For every feature pair with |Pearson r| >= threshold on the labelled-train book we
+    drop ONE member -- the one with the LOWER univariate ANOVA F-score (sklearn f_classif,
+    the SelectKBest scorer), so the more discriminative twin survives. Exact ties (e.g.
+    no_bank_feed == ~has_linked_bank_feed give identical F) break toward dropping the
+    later-listed column, which on this data is the ENGINEERED duplicate / self-report twin
+    -- keeping the raw verified column that also serves as the canonical missingness flag.
+
+    Why: collinearity barely affects the tree leg but destabilizes the LogisticRegression
+    leg (here the standardized design is rank-deficient -> infinite condition number via
+    the perfect no_bank_feed/has_linked_bank_feed pair), inflating coefficient variance and
+    making the Deliverable-D attribution split arbitrarily between twins. Dropping one twin
+    is information-preserving (the kept twin carries the shared signal) and stabilizes both
+    the coefficients and the explanation.
+    """
+    Xl = D.to_model_matrix(tr, feats)[lab]
+    yl = ytr[lab].astype(int).to_numpy()
+    F, _ = f_classif(Xl.fillna(Xl.median()).to_numpy(), yl)   # F-test handles NaN via median
+    fscore = dict(zip(feats, np.nan_to_num(F)))
+    corr = Xl.corr().abs()
+    drop: set[str] = set()
+    for i, a in enumerate(feats):
+        for b in feats[i + 1:]:
+            if a in drop or b in drop:
+                continue
+            r = corr.loc[a, b]
+            if pd.notna(r) and r >= threshold:
+                # keep the stronger twin; on a (near-)tie drop b (the later/derived one)
+                drop.add(a if fscore[a] < fscore[b] - 1e-9 else b)
+    kept = [c for c in feats if c not in drop]
+    print(f"[1b] collinearity prune (|r|>={threshold}, F-score tie-break): "
+          f"dropped {sorted(drop)} -> {len(kept)} feats")
+    return kept
+
+
 def recency_weights(ts: pd.Series,
                     half_life_months: float = RECENCY_HALF_LIFE_MONTHS) -> np.ndarray:
     """Exponential time-decay sample weights for drift-aware calibration.
@@ -162,8 +209,11 @@ def default_npv_per_dollar(days_to_default, rec_per_dollar) -> np.ndarray:
     real post-default recovery, and -1 is the principal at risk. No flat LGD anywhere.
     Draws are capped at the term (CAP_DRAWS_AT_TERM): days_to_default runs to 90 because
     of the day-90 outstanding-balance trigger, but only T=60 scheduled draws exist, so
-    crediting draws past day 60 would let a late default 'repay' more than the schedule."""
-    t = np.clip(np.nan_to_num(days_to_default, nan=float(TERM_DAYS)), 1, DEFAULT_DAY_CAP)
+    crediting draws past day 60 would let a late default 'repay' more than the schedule.
+    A missing default day (nan) is priced FAIL-CLOSED at day 1 (earliest default = fewest
+    draws collected = maximum loss) so unknown timing never flatters the loss; on this data
+    0 matured-train defaulters have a nan default day, so the change is defensive only."""
+    t = np.clip(np.nan_to_num(days_to_default, nan=1.0), 1, DEFAULT_DAY_CAP)
     if CAP_DRAWS_AT_TERM:
         t = np.minimum(t, TERM_DAYS)
     rec = np.nan_to_num(rec_per_dollar, nan=0.0)
@@ -204,9 +254,10 @@ def realized_npv(amount, default_flag, days_to_default, recovered=None) -> np.nd
     Repaid    (y=0): amount * GOOD_MARGIN                       (= F + R*r*T/365).
     Defaulted (y=1): amount*F/$ + amount*D/$*(min(t*,T)-1) + rec - amount.
     `recovered` is the per-loan final_recovered_amount in DOLLARS (None -> 0, the
-    conservative no-recovery read). NaN default_flag (unlabelled) -> NaN, mask it out."""
+    conservative no-recovery read). A missing default day (nan) on a defaulted loan is
+    priced FAIL-CLOSED at day 1 (max loss); NaN default_flag (unlabelled) -> NaN, mask out."""
     good = amount * GOOD_MARGIN
-    t = np.clip(np.nan_to_num(days_to_default, nan=float(TERM_DAYS)), 1, DEFAULT_DAY_CAP)
+    t = np.clip(np.nan_to_num(days_to_default, nan=1.0), 1, DEFAULT_DAY_CAP)
     if CAP_DRAWS_AT_TERM:
         t = np.minimum(t, TERM_DAYS)
     rec = (np.zeros_like(np.asarray(amount, dtype=float)) if recovered is None
@@ -226,10 +277,17 @@ def expected_npv_per_dollar(pd_hat, b):
 
 
 def ood_flag(df: pd.DataFrame) -> np.ndarray:
-    """1 where the model extrapolates beyond labelled support (audit 1, 4)."""
-    below_cut = pd.to_numeric(df["prior_underwriter_score"], errors="coerce").to_numpy() < OOD_SCORE_CUT
+    """1 where the model extrapolates beyond labelled support (audit 1, 4).
+
+    A MISSING prior_underwriter_score is treated as OOD (fail-closed): no prior score means
+    no evidence the row sits inside labelled support, so we abstain/widen rather than assume
+    in-distribution. numpy makes `nan < cut` False, which would WRONGLY mark a missing score
+    in-distribution, so we OR in the explicit isnan mask. On this data 0 val/test rows have
+    a missing prior score, so the change is defensive only."""
+    score = pd.to_numeric(df["prior_underwriter_score"], errors="coerce").to_numpy()
+    below_cut = (score < OOD_SCORE_CUT) | np.isnan(score)   # missing score => OOD (fail-closed)
     no_feed = df["no_bank_feed"].to_numpy().astype(bool)
-    return (np.nan_to_num(below_cut, nan=1.0).astype(bool) | no_feed).astype(float)
+    return (below_cut | no_feed).astype(float)
 
 
 def prior_approved(df: pd.DataFrame) -> np.ndarray:
@@ -249,11 +307,12 @@ def main() -> None:
     tr, feats_all = D.load_features("train")
     va, _ = D.load_features("val")
     te, _ = D.load_features("test")
-    feats = feats_for_a(feats_all)
-    cat_idx = D.categorical_indices(feats)
-
     ytr = D.target_vector(tr)
     lab = ytr.notna().to_numpy()
+    feats = feats_for_a(feats_all)
+    feats = select_features_for_a(tr, feats, ytr, lab)   # correlation + F-test prune
+    cat_idx = D.categorical_indices(feats)
+
     Xtr = D.to_model_matrix(tr, feats).to_numpy()
     Xva = D.to_model_matrix(va, feats).to_numpy()
     Xte = D.to_model_matrix(te, feats).to_numpy()
@@ -318,14 +377,17 @@ def main() -> None:
     #   SHALLOW (OOD & prior_approved)-> point PD  (prior-APPROVED => LABELLED; realized
     #             default ~0.18-0.22 << break-even 0.255, so the labels VOUCH -- gating these
     #             on upper-90 needlessly abstains on safe, repaying loans)
-    #   DEEP    (OOD & ~prior_approved)-> upper-90 (prior-DECLINED => NEVER labelled = the
-    #             crossover risk; keep the pessimistic gate so the lever adds ZERO risk on
-    #             the unseen reject tail)
+    #   DEEP    (OOD & ~prior_approved)-> DECLINE OUTRIGHT (prior-DECLINED => NEVER labelled,
+    #             so the conformal interval there is calibrated entirely off the labelled book
+    #             and is NOT a coverage-validated bound; we abstain on the whole tail rather
+    #             than fund an unvalidated extrapolation -- max risk management. Note deep rows
+    #             are never labelled, so this leaves realized labelled-val S_P&L unchanged and
+    #             only forgoes speculative model-priced upside on the unobservable tail.)
     pa_va, pa_te = prior_approved(va), prior_approved(te)
-    deep_va = (ood_va == 1.0) & ~pa_va         # only the never-labelled reject tail
+    deep_va = (ood_va == 1.0) & ~pa_va         # never-labelled reject tail -> declined below
     deep_te = (ood_te == 1.0) & ~pa_te
-    dpd_va = np.where(deep_va, hi_va, pd_va)   # deep-OOD on upper-90; id+shallow on point PD
-    dpd_te = np.where(deep_te, hi_te, pd_te)
+    dpd_va = pd_va                             # decision PD = point PD; deep-OOD declined via mask
+    dpd_te = pd_te
     cands = np.unique(np.round(pd_va[lab_va], 4))
     tau_arg, best = float(cands[-1]) + 1e-6, -np.inf
     for tc in cands:
@@ -333,7 +395,7 @@ def main() -> None:
         if tot > best:
             best, tau_arg = tot, float(tc)
 
-    appr = lab_va & (dpd_va < tau)             # trust-but-verify approvals on labelled val
+    appr = lab_va & (dpd_va < tau) & ~deep_va  # break-even cut; deep-OOD declined outright
     appr_arg = lab_va & (pd_va < tau_arg)
     npv_cut, npv_all = np.nansum(npv_va[appr]), np.nansum(npv_va[lab_va])
     npv_arg = np.nansum(npv_va[appr_arg])
@@ -341,7 +403,7 @@ def main() -> None:
     print(f"[4] empirical brief economics: E[NPV_default]/$={b_emp:+.4f} -> implied LGD={lgd_eff:.3f} "
           f"(NOT flat 0.30; aggregate train recovery={emp_recovery:.3f}=trap bait; draws capped@T={CAP_DRAWS_AT_TERM})")
     print(f"    DECISION trust-but-verify @ break-even={tau:.4f} approve(val)={appr.sum()/lab_va.sum():.3f}  "
-          f"(deep-OOD judged on upper-90)  vs OVERFIT argmax={tau_arg:.4f} approve={appr_arg.sum()/lab_va.sum():.3f}")
+          f"(deep-OOD declined outright)  vs OVERFIT argmax={tau_arg:.4f} approve={appr_arg.sum()/lab_va.sum():.3f}")
     print(f"    [labelled val] NPV @break-even=${npv_cut:,.0f}  @argmax=${npv_arg:,.0f} "
           f"(argmax in-sample edge ${npv_arg-npv_cut:,.0f})  approve-all ${npv_all:,.0f}  "
           f"NPV-margin={npv_cut / funded:.2%}")
@@ -352,13 +414,15 @@ def main() -> None:
         "predicted_pd": np.clip(np.concatenate([pd_va, pd_te]), 0.0, 1.0),
         "pd_lower_90": np.concatenate([lo_va, lo_te]),
         "pd_upper_90": np.concatenate([hi_va, hi_te]),
-        "_decision_pd": np.concatenate([dpd_va, dpd_te]),   # point PD (id+shallow) or upper-90 (deep-OOD)
+        "_decision_pd": np.concatenate([dpd_va, dpd_te]),   # point PD (id + shallow-OOD)
+        "_deep": np.concatenate([deep_va, deep_te]),        # deep-OOD reject tail -> declined
     })
     order = pd.read_csv(EXPECTED_IDS, header=None)[0].astype(str).tolist()
     out = out.set_index(out["applicant_id"].astype(str)).reindex(order).reset_index(drop=True)
     out["applicant_id"] = order
     assert not out.isna().any().any(), "row/ID mismatch vs expected_ids"
-    out["decision"] = (out["_decision_pd"] < tau).astype(int)   # trust-but-verify cut
+    # approve iff the point PD clears break-even AND the row is not the deep reject tail
+    out["decision"] = ((out["_decision_pd"] < tau) & ~out["_deep"].astype(bool)).astype(int)
     out = out[["applicant_id", "decision", "predicted_pd", "pd_lower_90", "pd_upper_90"]]
 
     dest = SUB_DIR / "submission_A_decisions.csv"
@@ -372,10 +436,11 @@ def main() -> None:
     # x the train default-timing distribution. Reported in $ / margin% / per-loan so
     # the number is comparable however the metric is normalized.
     pd_cat = np.concatenate([pd_va, pd_te])
-    dpd_cat = np.concatenate([dpd_va, dpd_te])   # decision PD (deep-OOD on upper-90)
+    dpd_cat = np.concatenate([dpd_va, dpd_te])   # decision PD (point PD; deep-OOD declined)
+    deep_cat = np.concatenate([deep_va, deep_te])
     amt_cat = np.concatenate([amt_va, te["requested_amount"].to_numpy()])
     enpv = amt_cat * expected_npv_per_dollar(pd_cat, b_emp)   # value at POINT PD x empirical b
-    appr_cat = dpd_cat < tau                      # but GATE trust-but-verify
+    appr_cat = (dpd_cat < tau) & ~deep_cat        # break-even cut; deep-OOD declined outright
     e_total, funded_all = float(enpv[appr_cat].sum()), float(amt_cat[appr_cat].sum())
     n_appr = int(appr_cat.sum())
     print(f"[5b] EXPECTED NPV (approved val+test): ${e_total:,.0f}  "
