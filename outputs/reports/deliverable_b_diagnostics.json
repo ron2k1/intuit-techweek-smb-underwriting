@@ -1,0 +1,26 @@
+{
+  "n_approved_val": 3022,
+  "n_approved_test": 5931,
+  "n_approved_total": 8953,
+  "by_cohort_counts": {
+    "1": 731,
+    "2": 760,
+    "3": 737,
+    "4": 745,
+    "5": 779,
+    "6": 711,
+    "7": 709,
+    "8": 716,
+    "9": 661,
+    "10": 670,
+    "11": 546,
+    "12": 580,
+    "13": 608
+  },
+  "cdr_week13_age13_mean": 0.1481445547832195,
+  "cdr_age13_avg_across_cohorts": 0.14985176066032863,
+  "cdr_age1_avg_across_cohorts": 0.009481951413205071,
+  "mean_interval_width": 0.03264528545612404,
+  "npv_buffer_rate": 0.005,
+  "used_submission_a_decisions": true
+}

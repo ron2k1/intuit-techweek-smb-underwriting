@@ -1,0 +1,29 @@
+{
+  "formula_constants": {
+    "paid_margin_rate": 0.08753424657534246,
+    "origination_fee_rate": 0.03,
+    "daily_draw_factor": 0.01762557077625571
+  },
+  "active_submission": {
+    "rows": 13306,
+    "approved_total": 9199,
+    "approval_rate": 0.6913422516158124,
+    "validation_approval_rate": 0.6934729338382714,
+    "test_approval_rate": 0.6902574571849835,
+    "validation_labeled_realized_npv": 3834516.5002022013
+  },
+  "best_buffer_by_labeled_validation_npv": {
+    "buffer_per_dollar": 0.005,
+    "matches_active_submission": 12746.0,
+    "approved_total": 8953.0,
+    "validation_labeled_approved": 2015.0,
+    "validation_labeled_realized_npv": 3789087.6615743465
+  },
+  "buffer_matching_active_submission": {
+    "buffer_per_dollar": 0.0,
+    "matches_active_submission": 12805.0,
+    "approved_total": 9160.0,
+    "validation_labeled_approved": 2048.0,
+    "validation_labeled_realized_npv": 3749337.6652199132
+  }
+}

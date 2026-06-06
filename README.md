@@ -1,76 +1,155 @@
-# Intuit TechWeek NYC 2026 — SMB Underwriting Challenge
+# SMB Underwriting Challenge - Participant Instructions
 
-Team working repo for the Intuit "Explainable ML" hackathon (NY Tech Week, Jun 5–6, 2026).
-Official challenge: https://github.com/intuit/intuit-techweek-nyc-hackathon-2026
+> ## STEP 0 (REQUIRED, DO THIS FIRST): Register your team
+>
+> **Register here as early as possible: [Form Link](https://forms.gle/9VPr8e7KNkZyDBUR6)
+>
+> You will **not** receive a submission link until you register. Don't leave this
+> to the last minute.
+>
+> Provide your **team name** and, for each member (1-4 members per team):
+> full name (required), email (required). After you
+> register, we email your team a private link where you upload your submission.
 
-> **You are a small-business lender.** Using a historical book of loan applications,
-> decide whom to fund **to maximize portfolio profit**, forecast how that book
-> defaults over time, answer causal what-if questions, and defend every choice.
+---
 
-## Deliverables (submit exactly these four file names)
+## The challenge
 
-| # | File | What | Difficulty | Scored on |
-|---|------|------|-----------|-----------|
-| **A** | `submission_A_decisions.csv` | approve/decline + calibrated PD + 90% interval, all 13,306 val+test applicants | easy–med | `S_P&L` realized portfolio profit |
-| **B** | `submission_B_trajectory.csv` | 13×13 grid: cumulative default rate by cohort-week × loan-age of **your approved set** | med | `S_traj` trajectory accuracy |
-| **C** | `submission_C_counterfactuals.csv` | 900 `do(feature=value)` counterfactual PDs | hard | `S_C` true interventional effect |
-| **D** | `submission_D_writeup.pdf` | 4-page methodology defense (5 fixed sections) | writeup | `S_write` |
+You are a small-business lender. Using a historical book of loan applications,
+build a model that (A) decides whom to fund, (B) forecasts how those loans
+default over time, and (C) answers causal "what-if" questions - then defend your
+reasoning in a short writeup (D).
 
-Plus a cross-cutting **`S_cal`**: 90% intervals on A and B must contain truth without being needlessly wide. Scoring weights are unpublished. `validate_submission.py` must print `PASS` or the submission is disqualified.
+## What you get
 
-### Schemas
-- **A:** `applicant_id, decision (0/1), predicted_pd, pd_lower_90, pd_upper_90` — `pd_lower_90 <= predicted_pd <= pd_upper_90`; PD required even for declines.
-- **B:** `cohort_week (1-13), loan_age_weeks (1-13), cumulative_default_rate, cdr_lower_90, cdr_upper_90` — 169 rows; non-decreasing in age within each cohort.
-- **C:** `query_id, predicted_pd_cf, pd_cf_lower_90, pd_cf_upper_90` — one per row of `dataset/intervention_queries.csv`.
+Everything is in this folder. Start with the dataset guide:
+[`dataset/README.md`](dataset/README.md).
 
-## Loan economics (drives Deliverable A's decision)
-Fixed terms: **60-day** term, daily ACH, **35% APR**, **3% origination fee**. A fully-repaid loan nets ≈ `amount × (0.35×60/365 + 0.03) ≈ 8.75%`. A default loses most of principal minus `final_recovered_amount`. **Break-even PD ≈ `0.0875 / (LGD + 0.0875)`** → ~8% (no recovery) to ~15% (50% recovery). **Approve below the profit-break-even PD, NOT below 0.5.**
+| File | Purpose |
+|---|---|
+| `dataset/dataset-compressed.zip` | The data: `train.csv`, `validation.csv`, `test.csv` (unzip first). |
+| `dataset/data_dictionary.csv` | Every column: name, type, description. |
+| `dataset/intervention_queries.csv` | The ~900 queries for Deliverable C. |
+| `dataset/cohort_week_definitions.csv` | `cohort_week` (1-13) -> calendar date ranges (for Deliverable B). |
+| `dataset/submission_B_template.csv` | The 169-row grid to fill for Deliverable B. |
+| `submission_D_writeup_template.md` | Skeleton for the Deliverable D writeup. |
+| `validate_submission.py` | Run this on your submission before uploading. |
+| `requirements.txt` | The (minimal) Python deps to read data + validate. |
 
-**Default definition:** funded loan defaults on *any* of — 3 consecutive missed daily draws, 6 cumulative missed draws, or positive balance at day 90.
+## The four deliverables
 
-## Known traps (this is the "Explainable ML" theme — finding them = writeup §1)
-1. **Reject inference / selection bias** — outcomes exist only for prior-approved & matured loans. Naive `dropna()` then train ⇒ overconfident PD on the real population.
-2. **Outcome leakage** — `repayment_status, observation_status, days_to_default, days_to_full_repayment, final_recovered_amount` are post-outcome and blank in test. Never use as features.
-3. **`prior_decision` is a collider / selection node** — never condition on it for causal effects (C).
-4. **Self-report inflation** — `stated_*` fields are optimistically biased vs `observed_*` bank-feed. `do(stated_revenue=X)` may have ~0 true effect.
-5. **MNAR missingness** — bank-feed nulls (no linked feed) are informative; add missingness indicators, don't blindly impute.
-6. **Right-censoring + shift** — late cohorts under-observed ⇒ B needs survival methods, not raw fractions.
-7. **Planted integrity violations** — check `prior_loans_default_count <= prior_loans_count`, `days_to_default <= 90`, flag vs `repayment_status`, `business_id` not spanning splits, engineered ratio vs raw inputs.
+You submit **exactly four files**, with **exactly these names**. Scoring is
+automated by joining on these names and IDs, so a wrong name or a missing ID
+means your submission cannot be scored.
 
-## Team & ownership
-| Person | Role | Owns |
-|--------|------|------|
-| Ronil | ML spine | shared feature pipeline + **Deliverable A** |
-| DS Engineer | Survival + causal | **Deliverable B**, **Deliverable C** (DAG/backdoor) |
-| ML PM | Modeling + calibration | calibration/conformal layer, A iteration |
-| Amazon SWE | Platform & defense | audit, submission assembly, `validate` gate, **Deliverable D** scribe |
+### A - `submission_A_decisions.csv` (your lending policy)
 
-Dependency spine: **shared pipeline → A's decisions → (B consumes them) + (C reuses the PD model) → D defends all.**
+Your approve/decline decision plus your calibrated probability of default (PD)
+for every applicant.
 
-## Setup
-```bash
-python -m venv .venv && . .venv/Scripts/activate   # Windows; use .venv/bin/activate on macOS/Linux
-pip install -r requirements.txt
+- **Rows:** one per applicant in `validation.csv` + `test.csv` (13,306 total).
+- **Columns:**
+  | column | meaning |
+  |---|---|
+  | `applicant_id` | matches the dataset |
+  | `decision` | `1` = approve at the requested amount, `0` = decline |
+  | `predicted_pd` | your PD point estimate in `[0, 1]` - **required for everyone, including declines** |
+  | `pd_lower_90` | lower bound of your 90% interval on `predicted_pd` |
+  | `pd_upper_90` | upper bound of your 90% interval |
+- **Rule:** `pd_lower_90 <= predicted_pd <= pd_upper_90` on every row.
 
-# Get the data (not committed): drop dataset-compressed.zip into dataset/ then:
-python scripts/setup_data.py
+### B - `submission_B_trajectory.csv` (the default-timing forecast)
 
-# Build Deliverable A:
-python -m src.build_a          # writes submissions/submission_A_decisions.csv
+This is **not** a single default number - it is the *shape* of how defaults
+accumulate over the life of a loan, per origination cohort. It is what tells us
+whether you modeled loan timing rather than just a yes/no classifier.
 
-# Validate before upload (must print PASS):
-python validate_submission.py submissions/
-```
+For each origination **cohort week** `w` (1-13) and **loan age** `a` weeks (1-13),
+predict the cumulative fraction of **your approved cohort-`w` loans** that have
+defaulted **by day `7a`**.
 
-## Layout
-```
-src/            modeling pipeline (data loading, features, per-deliverable builders)
-submissions/    the four output files go here (flat, exact names) for upload
-reports/        audit findings, EDA, writeup drafts
-dataset/        challenge reference files (data CSVs are gitignored)
-expected_ids/   ground-truth ID sets used by the validator
-validate_submission.py   organizer's format gate (copied from official repo)
-```
+- **Rows:** the full 13 x 13 = **169** grid. Use `dataset/submission_B_template.csv`:
+  overwrite the three prediction columns; do not change the grid itself.
+- **Columns:**
+  | column | meaning |
+  |---|---|
+  | `cohort_week` | origination cohort 1-13 (from `cohort_week_definitions.csv`) |
+  | `loan_age_weeks` | loan age 1-13 weeks after origination |
+  | `cumulative_default_rate` | predicted cumulative default fraction by day `7a`, in `[0, 1]` |
+  | `cdr_lower_90` / `cdr_upper_90` | your 90% interval bounds |
+- **Rules:** `cdr_lower_90 <= cumulative_default_rate <= cdr_upper_90`, and within
+  each cohort the `cumulative_default_rate` must be **non-decreasing as age
+  increases** (cumulative rates can only go up).
+- **Example row:** `cohort_week=3, loan_age_weeks=4, cumulative_default_rate=0.05`
+  means "5% of my approved week-3 loans defaulted within the first 28 days."
 
-## Timeline (hard deadline)
-Register on the Google Form by **8 PM Friday** (no submission link otherwise). Submit by **14:00 Saturday**. Upload by 13:45 — never at 13:59.
+### C - `submission_C_counterfactuals.csv` (the causal what-if)
+
+`dataset/intervention_queries.csv` lists ~900 queries, each
+`(query_id, applicant_id, feature_name, intervention_value)`. For each query,
+predict the applicant's PD **if that one feature were *set* to that value by
+intervention**, holding everything else fixed - i.e. `do(feature = value)`.
+
+- **Rows:** one per `query_id` in `intervention_queries.csv`.
+- **Columns:**
+  | column | meaning |
+  |---|---|
+  | `query_id` | matches the queries file |
+  | `predicted_pd_cf` | your post-intervention PD in `[0, 1]` |
+  | `pd_cf_lower_90` / `pd_cf_upper_90` | your 90% interval bounds |
+- **Rule:** `pd_cf_lower_90 <= predicted_pd_cf <= pd_cf_upper_90`.
+
+### D - `submission_D_writeup.pdf` (the technical writeup)
+
+A short writeup defending your methodology. Human-reviewed; reviewers grade on
+substance, not polish.
+
+- **Start from** [`submission_D_writeup_template.md`](submission_D_writeup_template.md),
+  fill in each section, then **export to PDF** named `submission_D_writeup.pdf`.
+- **Format (enforced):** max **4 pages** of body (excluding references), **>=11pt**
+  font, **>=0.75 inch** margins. Content past page 4 is truncated for review.
+- **Required sections, in this order:**
+  1. Problem framing & assumptions violated
+  2. Methodology
+  3. Causal reasoning & counterfactual methodology
+  4. Calibration & uncertainty quantification
+  5. Limitations & what we'd do differently
+- Section 3 (causal reasoning - distinguishing observational from interventional
+  prediction, and how you'd defend your drivers to a regulator) carries the most
+  weight.
+
+## How you're scored (high level)
+
+The A/B/C files are scored automatically; the writeup is reviewed by humans:
+
+- **Portfolio profitability** from your approve/decline decisions (A).
+- **Cohort-timing accuracy** of your trajectory forecast (B).
+- **Calibration** of your 90% intervals (A and B).
+- **Counterfactual accuracy** of your what-if predictions (C).
+- **Technical writeup** (D).
+
+We deliberately do not publish the exact scoring weights or formulas.
+
+## Submission checklist
+
+1. **Register** on the Google Form (Step 0) early - your private upload link is
+   emailed to your team.
+2. **Unzip and explore** the dataset (`dataset/`).
+3. **Build your four files** with the exact names above. Use
+   `submission_B_template.csv` for B and `submission_D_writeup_template.md` for D.
+4. **Put all four files flat in one folder** (no subfolders).
+5. **Validate** until it prints `PASS`:
+   ```bash
+   pip install -r requirements.txt
+   python validate_submission.py path/to/your_submission_folder
+   ```
+6. **Upload** the four files to your team's private link from the email. Done.
+
+## Hard requirements (read this)
+
+- **Exact file names**, exactly as listed above. A typo means your file is not
+  found and not scored.
+- **Flat folder** - the four files directly in one folder, no nesting.
+- **`validate_submission.py` must print `PASS`.** Format, naming, ID-coverage,
+  range, and monotonicity mismatches are caught here. Because scoring for some deliverables are objective and fully
+  automated, a submission that does not pass the validator will be disqualified.

@@ -1,0 +1,11 @@
+{
+  "policy": "blend_decomp_direct_hgb",
+  "alpha_direct": 0.7,
+  "threshold": 0.005,
+  "validation_approval_rate": 0.6934729338382714,
+  "test_approval_rate": 0.6902574571849835,
+  "approved_total": 9199,
+  "validation_labeled_approved": 2047,
+  "validation_labeled_realized_npv": 3834516.5002022013,
+  "score_note": "Decision score is margin-like but not a calibrated PD."
+}

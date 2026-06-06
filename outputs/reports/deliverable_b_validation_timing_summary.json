@@ -1,0 +1,99 @@
+{
+  "n_labeled_validation": 2551,
+  "n_labeled_approved_under_current_policy": 2047,
+  "mean_abs_cdr_error": 0.014542158638186947,
+  "week13_mean_actual_cdr": 0.13547405758231987,
+  "week13_mean_predicted_cdr": 0.1400617607574584,
+  "worst_rows": [
+    {
+      "cohort_week": 13,
+      "loan_age_weeks": 12,
+      "n_labeled_approved": 124,
+      "actual_cdr": 0.04032258064516129,
+      "predicted_cdr": 0.09781119482025909,
+      "error": 0.0574886141750978,
+      "abs_error": 0.0574886141750978
+    },
+    {
+      "cohort_week": 13,
+      "loan_age_weeks": 11,
+      "n_labeled_approved": 124,
+      "actual_cdr": 0.04032258064516129,
+      "predicted_cdr": 0.09715270737969008,
+      "error": 0.05683012673452879,
+      "abs_error": 0.05683012673452879
+    },
+    {
+      "cohort_week": 13,
+      "loan_age_weeks": 10,
+      "n_labeled_approved": 124,
+      "actual_cdr": 0.04032258064516129,
+      "predicted_cdr": 0.0964936137511834,
+      "error": 0.05617103310602211,
+      "abs_error": 0.05617103310602211
+    },
+    {
+      "cohort_week": 13,
+      "loan_age_weeks": 9,
+      "n_labeled_approved": 124,
+      "actual_cdr": 0.04032258064516129,
+      "predicted_cdr": 0.09583391322307228,
+      "error": 0.055511332577910986,
+      "abs_error": 0.055511332577910986
+    },
+    {
+      "cohort_week": 13,
+      "loan_age_weeks": 13,
+      "n_labeled_approved": 124,
+      "actual_cdr": 0.08064516129032258,
+      "predicted_cdr": 0.13466774881601484,
+      "error": 0.054022587525692264,
+      "abs_error": 0.054022587525692264
+    },
+    {
+      "cohort_week": 4,
+      "loan_age_weeks": 13,
+      "n_labeled_approved": 184,
+      "actual_cdr": 0.09239130434782608,
+      "predicted_cdr": 0.14231698955292899,
+      "error": 0.049925685205102904,
+      "abs_error": 0.049925685205102904
+    },
+    {
+      "cohort_week": 13,
+      "loan_age_weeks": 8,
+      "n_labeled_approved": 124,
+      "actual_cdr": 0.04032258064516129,
+      "predicted_cdr": 0.08872546695579578,
+      "error": 0.04840288631063449,
+      "abs_error": 0.04840288631063449
+    },
+    {
+      "cohort_week": 13,
+      "loan_age_weeks": 5,
+      "n_labeled_approved": 124,
+      "actual_cdr": 0.008064516129032258,
+      "predicted_cdr": 0.05535448689798027,
+      "error": 0.04728997076894801,
+      "abs_error": 0.04728997076894801
+    },
+    {
+      "cohort_week": 13,
+      "loan_age_weeks": 6,
+      "n_labeled_approved": 124,
+      "actual_cdr": 0.024193548387096774,
+      "predicted_cdr": 0.06658409685562176,
+      "error": 0.04239054846852499,
+      "abs_error": 0.04239054846852499
+    },
+    {
+      "cohort_week": 7,
+      "loan_age_weeks": 12,
+      "n_labeled_approved": 175,
+      "actual_cdr": 0.06857142857142857,
+      "predicted_cdr": 0.11052306396214573,
+      "error": 0.041951635390717154,
+      "abs_error": 0.041951635390717154
+    }
+  ]
+}

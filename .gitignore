@@ -1,26 +1,26 @@
-# --- Data (NOT committed; each member fetches it locally; see README) ---
-/dataset/train.csv
-/dataset/validation.csv
-/dataset/test.csv
-/dataset/dataset-compressed.zip
-/data/
-
-# --- Python ---
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual env
 .venv/
 venv/
-env/
-.ipynb_checkpoints/
-*.egg-info/
 
-# --- Scratch / outputs ---
-*.log
-scratch/
-reports/figures/
+# uv
+# (uv.lock IS committed)
 
-# --- Editors / OS ---
+# Generated artifacts (large; reproducible from config)
+artifacts/release/
+artifacts/ground_truth/
+artifacts/runs/
+artifacts/
+
+# OS
+.DS_Store
+
+# Editor
 .vscode/
 .idea/
-.DS_Store
-Thumbs.db

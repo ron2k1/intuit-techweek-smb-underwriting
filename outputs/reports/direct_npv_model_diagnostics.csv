@@ -1,0 +1,7 @@
+model,target,mae_margin,corr_with_realized_margin,auroc_profitable
+direct_margin_hgb_squared,realized_npv_per_dollar,0.1031453929430687,0.41002403053922565,
+direct_margin_hgb_absolute,realized_npv_per_dollar,0.08782459966620841,0.34902549143061845,
+direct_margin_ridge,realized_npv_per_dollar,0.11838669273448921,0.37540812728388195,
+direct_margin_huber,realized_npv_per_dollar,0.09259741362502877,0.021467091237972916,
+profitable_hgb,realized_npv_positive,,0.40804370767451076,0.8107617999510882
+profitable_logistic,realized_npv_positive,,0.40321561627489516,0.8113242846661777

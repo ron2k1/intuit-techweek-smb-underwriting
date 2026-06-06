@@ -1,0 +1,25 @@
+{
+  "current_policy": {
+    "policy": "active_submission",
+    "threshold": NaN,
+    "approved": 2015,
+    "approval_rate": 0.7898863190905527,
+    "realized_npv": 3789087.6615743465,
+    "mean_realized_npv_approved": 1880.440526835904,
+    "observed_default_rate_approved": 0.0803970223325062,
+    "overlap_with_current_decisions": 1.0
+  },
+  "best_candidate": {
+    "policy": "blend_decomp_direct_hgb_0.7",
+    "threshold": 0.0049999999999999906,
+    "approved": 2047,
+    "approval_rate": 0.8024304194433556,
+    "realized_npv": 3834516.5002022013,
+    "mean_realized_npv_approved": 1873.2371764544218,
+    "observed_default_rate_approved": 0.08158280410356619,
+    "overlap_with_current_decisions": 0.9631517052136417
+  },
+  "oracle_labeled_validation_npv": 6545068.948835259,
+  "approve_all_labeled_validation_npv": 2139702.4905419005,
+  "caveat": "Thresholds are selected on labeled validation; use as a policy lead, not proof of test performance."
+}
