@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Unzip the challenge dataset into ./dataset/.
+"""Make sure the challenge dataset is present in ./dataset/.
 
-The raw data is intentionally NOT committed to this repo (it is large and is the
-challenge organizer's to distribute). Each teammate fetches it once:
+The synthetic dataset is committed to this repo, so a fresh clone already has
+``dataset/train.csv``, ``dataset/validation.csv``, and ``dataset/test.csv``.
+Running this script is then a no-op (it just confirms the files are there).
 
-  1. Get ``dataset-compressed.zip`` from the official challenge repo:
-       https://github.com/intuit/intuit-techweek-nyc-hackathon-2026
-     (it lives at ``dataset/dataset-compressed.zip`` there).
-  2. Drop it into THIS repo's ``dataset/`` folder.
-  3. Run:  python scripts/setup_data.py
+It is kept as a convenience for the one case where only the compressed archive
+is present: drop ``dataset-compressed.zip`` into ``dataset/`` and run
 
-That produces ``dataset/train.csv``, ``dataset/validation.csv``,
-``dataset/test.csv`` (all gitignored).
+  python scripts/setup_data.py
+
+and it extracts the three CSVs.
 """
 from __future__ import annotations
 

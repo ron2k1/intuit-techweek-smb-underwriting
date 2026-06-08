@@ -8,11 +8,9 @@ what-if questions about them.
 
 ## Getting the data
 
-The three main tables are zipped to keep the download small. Unzip first:
-
-```bash
-unzip dataset-compressed.zip      # -> train.csv, validation.csv, test.csv
-```
+The three main tables (`train.csv`, `validation.csv`, `test.csv`) are committed
+right here in this folder, so a fresh clone already has them. The data is
+synthetic. Nothing to download or unzip.
 
 ## Files
 
