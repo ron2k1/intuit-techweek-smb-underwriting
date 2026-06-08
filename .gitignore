@@ -1,7 +1,7 @@
-# --- Data (NOT committed; each member fetches it locally; see README) ---
-/dataset/train.csv
-/dataset/validation.csv
-/dataset/test.csv
+# --- Data ---
+# The synthetic challenge dataset (train/validation/test.csv) IS committed under
+# dataset/. It is synthetic, so it is safe to publish. The redundant compressed
+# archive and any local scratch under data/ stay out of git.
 /dataset/dataset-compressed.zip
 /data/
 
