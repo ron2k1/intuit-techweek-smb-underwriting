@@ -40,10 +40,10 @@ Fixed terms: **60-day** term, daily ACH, **35% APR**, **3% origination fee**. A 
 ## Team & ownership
 | Person | Role | Owns |
 |--------|------|------|
-| Ronil | ML spine | shared feature pipeline + **Deliverable A** |
-| DS Engineer | Survival + causal | **Deliverable B**, **Deliverable C** (DAG/backdoor) |
-| ML PM | Modeling + calibration | calibration/conformal layer, A iteration |
-| Amazon SWE | Platform & defense | audit, submission assembly, `validate` gate, **Deliverable D** scribe |
+| Ronil Basu | ML spine | shared feature pipeline + **Deliverable A** |
+| Abhimanyu Swaroop | Survival + causal | **Deliverable B**, **Deliverable C** (DAG/backdoor) |
+| Steven Yang | Modeling + calibration | calibration/conformal layer, A iteration |
+| Ayush Chadha | Platform & defense | audit, submission assembly, `validate` gate, **Deliverable D** scribe |
 
 Dependency spine: **shared pipeline → A's decisions → (B consumes them) + (C reuses the PD model) → D defends all.**
 
