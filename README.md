@@ -1,76 +1,51 @@
-# Intuit TechWeek NYC 2026 — SMB Underwriting Challenge
+# Intuit TechWeek NYC 2026: SMB Underwriting Challenge
 
-Team working repo for the Intuit "Explainable ML" hackathon (NY Tech Week, Jun 5–6, 2026).
-Official challenge: https://github.com/intuit/intuit-techweek-nyc-hackathon-2026
+Our team took 2nd place at Intuit's explainable-ML hackathon during NY Tech Week (June 5 and 6, 2026, at Intuit HQ). The premise: you are a small-business lender. Decide whom to fund to maximize portfolio profit, forecast how the funded book defaults over time, answer 900 causal what-if queries and defend every methodological choice in a graded writeup.
 
-> **You are a small-business lender.** Using a historical book of loan applications,
-> decide whom to fund **to maximize portfolio profit**, forecast how that book
-> defaults over time, answer causal what-if questions, and defend every choice.
+Official challenge repo: https://github.com/intuit/intuit-techweek-nyc-hackathon-2026
 
-## Deliverables (submit exactly these four file names)
+## The four graded artifacts
 
-| # | File | What | Difficulty | Scored on |
-|---|------|------|-----------|-----------|
-| **A** | `submission_A_decisions.csv` | approve/decline + calibrated PD + 90% interval, all 13,306 val+test applicants | easy–med | `S_P&L` realized portfolio profit |
-| **B** | `submission_B_trajectory.csv` | 13×13 grid: cumulative default rate by cohort-week × loan-age of **your approved set** | med | `S_traj` trajectory accuracy |
-| **C** | `submission_C_counterfactuals.csv` | 900 `do(feature=value)` counterfactual PDs | hard | `S_C` true interventional effect |
-| **D** | `submission_D_writeup.pdf` | 4-page methodology defense (5 fixed sections) | writeup | `S_write` |
+Everything we were scored on lives in [`submissions/`](submissions/).
 
-Plus a cross-cutting **`S_cal`**: 90% intervals on A and B must contain truth without being needlessly wide. Scoring weights are unpublished. `validate_submission.py` must print `PASS` or the submission is disqualified.
+| Deliverable | File | What it is |
+|---|---|---|
+| A | `submission_A_decisions.csv` | Approve/decline, calibrated PD and 90% interval for all 13,306 applicants |
+| B | `submission_B_trajectory.csv` | 13x13 cumulative default-rate grid over the book our policy approved |
+| C | `submission_C_counterfactuals.csv` | 900 do(feature=value) counterfactual PDs with intervals |
+| D | [`submission_D_writeup.md`](submissions/submission_D_writeup.md) | The methodology defense |
 
-### Schemas
-- **A:** `applicant_id, decision (0/1), predicted_pd, pd_lower_90, pd_upper_90` — `pd_lower_90 <= predicted_pd <= pd_upper_90`; PD required even for declines.
-- **B:** `cohort_week (1-13), loan_age_weeks (1-13), cumulative_default_rate, cdr_lower_90, cdr_upper_90` — 169 rows; non-decreasing in age within each cohort.
-- **C:** `query_id, predicted_pd_cf, pd_cf_lower_90, pd_cf_upper_90` — one per row of `dataset/intervention_queries.csv`.
+The writeup is the best entry point. It covers the causal DAG, the selection-bias handling and every number below.
 
-## Loan economics (drives Deliverable A's decision)
-Fixed terms: **60-day** term, daily ACH, **35% APR**, **3% origination fee**. A fully-repaid loan nets ≈ `amount × (0.35×60/365 + 0.03) ≈ 8.75%`. A default loses most of principal minus `final_recovered_amount`. **Break-even PD ≈ `0.0875 / (LGD + 0.0875)`** → ~8% (no recovery) to ~15% (50% recovery). **Approve below the profit-break-even PD, NOT below 0.5.**
+## What we built
 
-**Default definition:** funded loan defaults on *any* of — 3 consecutive missed daily draws, 6 cumulative missed draws, or positive balance at day 90.
+Deliverable A is not a classifier with a 0.5 cutoff. We trained calibrated PD models (validation AUROC 0.740, log loss 0.439, Brier 0.138) and converted each PD into expected NPV with the challenge's cash-flow formula, approving only when the NPV margin cleared a threshold. Default labels only exist for loans a prior underwriter approved and let mature, so prior-declined applicants got an extra margin guardrail instead of blind trust in the model. The final policy approved 7,571 applicants, 1,937 of them prior-declined, and realized about $2.71M in labeled-validation NPV (bootstrap 5th to 95th percentile: $2.46M to $2.95M).
 
-## Known traps (this is the "Explainable ML" theme — finding them = writeup §1)
-1. **Reject inference / selection bias** — outcomes exist only for prior-approved & matured loans. Naive `dropna()` then train ⇒ overconfident PD on the real population.
-2. **Outcome leakage** — `repayment_status, observation_status, days_to_default, days_to_full_repayment, final_recovered_amount` are post-outcome and blank in test. Never use as features.
-3. **`prior_decision` is a collider / selection node** — never condition on it for causal effects (C).
-4. **Self-report inflation** — `stated_*` fields are optimistically biased vs `observed_*` bank-feed. `do(stated_revenue=X)` may have ~0 true effect.
-5. **MNAR missingness** — bank-feed nulls (no linked feed) are informative; add missingness indicators, don't blindly impute.
-6. **Right-censoring + shift** — late cohorts under-observed ⇒ B needs survival methods, not raw fractions.
-7. **Planted integrity violations** — check `prior_loans_default_count <= prior_loans_count`, `days_to_default <= 90`, flag vs `repayment_status`, `business_id` not spanning splits, engineered ratio vs raw inputs.
+Deliverable B forecasts how the book A chose to fund defaults over 13 weeks. We built applicant-level cumulative hazard curves, shrank sparse cohorts toward the global approved curve and applied Markov-switching residual calibration over cohort timing states. Validation timing came out at mean CDR error 0.0062, with week-13 predicted at 0.1253 against 0.1255 actual. The 90% intervals covered every grid cell at a mean width of 0.0556.
 
-## Team & ownership
-| Person | Role | Owns |
-|--------|------|------|
-| Ronil Basu | ML spine | shared feature pipeline + **Deliverable A** |
-| Abhimanyu Swaroop | Survival + causal | **Deliverable B**, **Deliverable C** (DAG/backdoor) |
-| Steven Yang | Modeling + calibration | calibration/conformal layer, A iteration |
-| Ayush Chadha | Platform & defense | audit, submission assembly, `validate` gate, **Deliverable D** scribe |
+Deliverable C asks for interventional probabilities, not associations. We excluded prior-underwriter artifacts from the causal model, recomputed engineered features under each intervention and applied per-feature guardrails: clean business-state interventions keep the model's delta, while self-reported and measurement-process fields get shrunk toward baseline with wider intervals. The causal audit surfaced 93 material sign violations on monotone features and neutralized all 93. Zero survived to the final file.
 
-Dependency spine: **shared pipeline → A's decisions → (B consumes them) + (C reuses the PD model) → D defends all.**
+## Why it was hard
 
-## Setup
-```bash
-python -m venv .venv && . .venv/Scripts/activate   # Windows; use .venv/bin/activate on macOS/Linux
-pip install -r requirements.txt
+The dataset was booby-trapped, on theme. Labels exist only for loans the prior underwriter approved, so naive training learns the wrong conditional entirely. Post-outcome columns sat right next to legitimate features waiting to leak. Self-reported revenue ran optimistically inflated relative to the bank-feed observations. Bank-feed missingness was informative rather than random, and late cohorts were right-censored. Finding those traps and defending the fixes was most of the scoring.
 
-# Get the data (not committed): drop dataset-compressed.zip into dataset/ then:
-python scripts/setup_data.py
+## Team
 
-# Build Deliverable A:
-python -m src.build_a          # writes submissions/submission_A_decisions.csv
-
-# Validate before upload (must print PASS):
-python validate_submission.py submissions/
-```
+| Person | Owned |
+|---|---|
+| Ronil Basu | Shared feature pipeline and Deliverable A |
+| Abhimanyu Swaroop | Deliverables B and C (survival modeling, DAG and backdoor analysis) |
+| Steven Yang | Calibration and conformal layer, A iteration |
+| Ayush Chadha | Audit, submission assembly, validation gate, Deliverable D scribe |
 
 ## Layout
+
 ```
-src/            modeling pipeline (data loading, features, per-deliverable builders)
-submissions/    the four output files go here (flat, exact names) for upload
-reports/        audit findings, EDA, writeup drafts
-dataset/        challenge reference files (data CSVs are gitignored)
-expected_ids/   ground-truth ID sets used by the validator
-validate_submission.py   organizer's format gate (copied from official repo)
+submissions/             the four graded artifacts, including the writeup
+dataset/                 challenge data and reference files
+expected_ids/            ground-truth ID sets used by the validator
+validate_submission.py   the organizer's format gate
+src/                     empty. The sprint's modeling code lived in our team workspace
 ```
 
-## Timeline (hard deadline)
-Register on the Google Form by **8 PM Friday** (no submission link otherwise). Submit by **14:00 Saturday**. Upload by 13:45 — never at 13:59.
+`validate_submission.py submissions/` reproduces the organizer's format check and prints PASS against the committed artifacts.
